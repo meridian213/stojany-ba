@@ -28,6 +28,7 @@
   --c-informal: #9a5b00;
   --c-bad: #c0282d;
   --c-unknown: #5f6779;
+  --c-demand: #b4176f;   /* miesta, kde chýba stojan */
   --star: #c98a00;
   --ok-bg: #e3f3ea;
   --warn-bg: #fff3d6;
@@ -42,7 +43,7 @@
   :root:not([data-theme="light"]) {
     --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
     --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
-    --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6;
+    --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5;
     --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
     color-scheme: dark;
   }
@@ -50,7 +51,7 @@
 :root[data-theme="dark"] {
   --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
   --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
-  --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6;
+  --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5;
   --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
   color-scheme: dark;
 }
@@ -117,6 +118,23 @@ main { position: relative; min-height: 0; }
 .pin-unknown { background: var(--c-unknown); }
 .pin.is-pending { border: 2.5px dashed #fff; opacity: .8; }
 .leaflet-marker-icon:focus-visible .pin { outline: 3px solid var(--fg); outline-offset: 3px; }
+.demand-wrap { background: none; border: none; }
+.demand-pin {
+  min-width: 34px; height: 34px; padding: 0 7px; border-radius: 17px; display: flex; align-items: center; justify-content: center; gap: 3px;
+  background: var(--surface); color: var(--c-demand); border: 3px solid var(--c-demand); box-shadow: 0 1px 4px rgba(0,0,0,.35);
+  font: 800 14px/1 var(--f-display); padding-top: 2px; font-variant-numeric: tabular-nums;
+}
+.demand-pin svg { width: 14px; height: 14px; margin-top: -2px; }
+.leaflet-marker-icon:focus-visible .demand-pin { outline: 3px solid var(--fg); outline-offset: 3px; }
+.big-choice { display: grid; gap: 10px; }
+.big-choice button {
+  display: grid; grid-template-columns: auto 1fr; gap: 2px 14px; align-items: center; text-align: left; cursor: pointer;
+  border: 1.5px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--fg); padding: 14px 16px; min-height: 72px;
+}
+.big-choice button strong { font-size: 1.05rem; }
+.big-choice button small { grid-column: 2; color: var(--muted); font-size: .9rem; }
+.big-choice .ico { grid-row: span 2; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; }
+.big-choice .ico svg { width: 22px; height: 22px; }
 .cluster {
   width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
   background: var(--accent); color: var(--accent-fg); font: 800 15px/1 var(--f-display); padding-top: 2px;
@@ -334,7 +352,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
     <svg viewBox="0 0 64 64" fill="none" stroke="#1d5bd8" stroke-width="3"><circle cx="32" cy="32" r="12"/><path d="M32 4v16M32 44v16M4 32h16M44 32h16"/><circle cx="32" cy="32" r="2" fill="#1d5bd8"/></svg>
   </div>
   <div class="addbar" id="addbar" hidden>
-    <p><strong>Pridanie stojana, krok 1 z 2.</strong> Posuň mapu tak, aby bol krížik presne na mieste stojana.</p>
+    <p id="addbarText"><strong>Pridanie stojana, krok 1 z 2.</strong> Posuň mapu tak, aby bol krížik presne na mieste stojana.</p>
     <div class="row">
       <button class="btn primary" type="button" id="addConfirm">Miesto je správne</button>
       <button class="btn" type="button" id="addUseGps">Použiť moju polohu</button>
@@ -351,9 +369,9 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg>
     Najbližšie
   </button>
-  <button class="nav-btn primary" id="btnAdd" type="button">
+  <button class="nav-btn primary" id="btnAdd" type="button" aria-haspopup="dialog">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-    Pridať stojan
+    Pridať
   </button>
   <button class="nav-btn" id="btnFilter" type="button" aria-haspopup="dialog">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
@@ -398,6 +416,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <legend class="sr-only">Ďalšie podmienky</legend>
       <label class="switch" for="fCovered"><span>Len zastrešené</span><input type="checkbox" id="fCovered"></label>
       <label class="switch" for="fPublic"><span>Skryť súkromné a len pre zákazníkov</span><input type="checkbox" id="fPublic"></label>
+      <label class="switch" for="fDemand"><span>Zobraziť miesta, kde chýba stojan</span><input type="checkbox" id="fDemand"></label>
     </fieldset>
     <p class="lead" id="filterCount" aria-live="polite"></p>
     <div class="btn-row">
@@ -405,6 +424,46 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <button class="btn primary" type="submit">Zobraziť na mape</button>
     </div>
   </form>
+</dialog>
+
+<!-- Čo pridať -->
+<dialog class="sheet" id="dlgChoose" aria-labelledby="chooseTitle">
+  <div class="sheet-head"><h2 id="chooseTitle">Čo chceš pridať?</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-body">
+    <div class="big-choice">
+      <button type="button" id="chooseRack">
+        <span class="ico" style="background:var(--c-safe);color:#fff" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M7 4v8a5 5 0 0 0 10 0V4"/><path d="M4 20h16"/></svg></span>
+        <strong>Stojan, ktorý tu už je</strong>
+        <small>Chýba na mape. Po schválení ho uvidia všetci.</small>
+      </button>
+      <button type="button" id="chooseDemand">
+        <span class="ico" style="background:var(--c-demand);color:#fff" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 3v11M12 18.5v.5"/></svg></span>
+        <strong>Tu chýba stojan</strong>
+        <small>Nemal si kam dať bicykel. Hlasy ukážu mestu, kde stojany treba.</small>
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Hlásenie: tu chýba stojan -->
+<dialog class="sheet" id="dlgDemand" aria-labelledby="demandTitle">
+  <div class="sheet-head"><h2 id="demandTitle">Tu chýba stojan</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť bez uloženia">✕</button></div>
+  <form class="sheet-body" id="demandForm" novalidate>
+    <p class="notice" id="demandInfo" hidden></p>
+    <fieldset>
+      <legend>Prečo by si tu potreboval stojan? <span aria-hidden="true">*</span></legend>
+      <div class="choice" id="demandReasons"></div>
+    </fieldset>
+    <p class="notice" id="demandError" role="alert" hidden></p>
+    <button class="btn primary block" type="submit" id="demandSubmit">Pridať môj hlas</button>
+    <p class="hint">Hlas je anonymný. Ukladá sa len miesto, dôvod a čas.</p>
+  </form>
+</dialog>
+
+<!-- Detail miesta, kde chýba stojan -->
+<dialog class="sheet" id="dlgDemandDetail" aria-labelledby="demandDetailTitle">
+  <div class="sheet-head"><h2 id="demandDetailTitle">Tu chýba stojan</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-body" id="demandDetailBody"></div>
 </dialog>
 
 <!-- Pridanie stojana -->
@@ -474,6 +533,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
   <div class="sheet-body">
     <h3 class="section-title">Legenda</h3>
     <ul class="legend" id="legend"></ul>
+    <p class="lead" style="display:flex;gap:12px;align-items:center"><span class="demand-pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>3</span><span>Miesto, kde ľudia hlásia, že chýba stojan. Číslo je počet hlasov.</span></p>
     <p class="lead">Prerušovaný okraj značky znamená, že stojan čaká na schválenie správcom.</p>
     <h3 class="section-title">Dáta</h3>
     <p class="lead" id="infoData"></p>
@@ -510,6 +570,7 @@ const CONFIG = {
   OVERPASS: ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"],
   OSM_CACHE_HOURS: 24,
   DUPLICATE_METERS: 15,
+  DEMAND_METERS: 30,   // hlásenia bližšie ako toto sa spájajú do jedného miesta
 };
 
 /* ---------- kategórie ---------- */
@@ -545,6 +606,12 @@ const OSM_TYPE_SK = {
   handlebar_holder: "držiak riadidiel", crossbar: "priečka",
 };
 const ACCESS_SK = { private: "Súkromné", customers: "Len pre zákazníkov", permissive: "Verejne prístupné so súhlasom", no: "Neprístupné", yes: "Verejné" };
+
+const REASONS = {
+  work: "Práca", shop: "Obchod alebo služby", school: "Škola", transit: "Zastávka MHD alebo vlak",
+  office: "Úrad alebo lekár", home: "Bývam tu", leisure: "Voľný čas alebo šport", other: "Iné",
+};
+const DEMAND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>';
 
 const CRITERIA = [
   { key: "frame", q: "Dá sa zamknúť rám bicykla?" },
@@ -627,6 +694,7 @@ class LocalStore {
   async init() {
     this.racks = (await kv.get("userRacks")) || [];
     this.ratings = (await kv.get("ratings")) || [];
+    this.demand = (await kv.get("demand")) || [];
   }
   isAdmin() { return prefs.get("adminDemo", false) === true; }
   async listUserRacks() { return this.racks.map((r) => ({ ...r })); }
@@ -641,6 +709,15 @@ class LocalStore {
   }
   async photoURL(rack) { if (!rack.photo) return null; const b = await kv.get(rack.photo); return b ? URL.createObjectURL(b) : null; }
   async listRatings() { return this.ratings; }
+  async listDemand() { return this.demand; }
+  async addDemand(d) {
+    this.demand.push({ ...d, id: Date.now(), createdAt: new Date().toISOString() });
+    await kv.set("demand", this.demand);
+  }
+  async deleteDemand(ids) {
+    this.demand = this.demand.filter((x) => !ids.includes(x.id));
+    await kv.set("demand", this.demand);
+  }
   async addRating(r) {
     if (this.ratings.some((x) => x.rackId === r.rackId && x.deviceId === DEVICE_ID)) throw Object.assign(new Error("already"), { code: "already" });
     this.ratings.push({ ...r, deviceId: DEVICE_ID, createdAt: new Date().toISOString() });
@@ -719,6 +796,19 @@ class SupabaseStore {
     const { error } = await this.sb.from("racks").update({ status }).eq("id", dbId);
     if (error) throw error;
   }
+  async listDemand() {
+    const { data, error } = await this.sb.from("demand").select("id, lat, lon, reason, created_at");
+    if (error) throw error;
+    return data.map((r) => ({ id: r.id, lat: r.lat, lon: r.lon, reason: r.reason, createdAt: r.created_at }));
+  }
+  async addDemand(d) {
+    const { error } = await this.sb.from("demand").insert({ lat: d.lat, lon: d.lon, reason: d.reason, device_id: DEVICE_ID });
+    if (error) { if (error.code === "23505") throw Object.assign(new Error("already"), { code: "already" }); throw error; }
+  }
+  async deleteDemand(ids) {
+    const { error } = await this.sb.from("demand").delete().in("id", ids);
+    if (error) throw error;
+  }
   async setOsmNote(rack, noteId) {
     const { error } = await this.sb.from("racks").update({ osm_note_id: noteId }).eq("id", rack.dbId);
     if (error) throw error;
@@ -741,7 +831,8 @@ const state = {
   ratings: [],
   agg: new Map(),
   me: null,              // [lat, lon] z GPS
-  filter: Object.assign({ cats: CAT_ORDER.slice(), minStars: 0, covered: false, publicOnly: false }, prefs.get("filter", {})),
+  filter: Object.assign({ cats: CAT_ORDER.slice(), minStars: 0, covered: false, publicOnly: false, demand: true }, prefs.get("filter", {})),
+  demand: [],
   markers: new Map(),    // id -> L.Marker
 };
 
@@ -869,6 +960,8 @@ async function loadUserData() {
     console.error(e);
     toast("Hodnotenia a pridané stojany sa nepodarilo načítať.");
   }
+  try { state.demand = await state.store.listDemand(); }
+  catch (e) { console.error(e); state.demand = []; }   // tabuľka ešte nemusí existovať
   computeAgg();
 }
 
@@ -976,6 +1069,7 @@ function render() {
   for (const id of [...state.markers.keys()]) if (!seen.has(id)) state.markers.delete(id);
   cluster.clearLayers();
   cluster.addLayers(markers);
+  renderDemand();
 
   const total = allRacks().length;
   const shown = racks.length;
@@ -983,7 +1077,7 @@ function render() {
   renderHeader(total, shown);
   const since = state.trackingSince ? new Date(state.trackingSince).toLocaleDateString("sk-SK") : null;
   $("#infoData").textContent = `Stojany pochádzajú z OpenStreetMap${t ? ` (stav k ${t})` : ""}.${since ? ` Zmeny v počte stojanov sledujeme od ${since}.` : ""} Hodnotenia a nové stojany sú ${state.store?.mode === "supabase" ? "zdieľané medzi všetkými používateľmi" : "zatiaľ uložené len v tomto zariadení (demo režim)"}.`;
-  const nOff = (CAT_ORDER.length - state.filter.cats.length) + (state.filter.minStars ? 1 : 0) + (state.filter.covered ? 1 : 0) + (state.filter.publicOnly ? 1 : 0);
+  const nOff = (CAT_ORDER.length - state.filter.cats.length) + (state.filter.minStars ? 1 : 0) + (state.filter.covered ? 1 : 0) + (state.filter.publicOnly ? 1 : 0) + (state.filter.demand === false ? 1 : 0);
   const badge = $("#filterBadge"); badge.hidden = !nOff; badge.textContent = nOff;
   $("#btnFilter").setAttribute("aria-label", nOff ? `Filter, ${nOff} aktívne` : "Filter");
   setTimeout(labelClusters, 50);
@@ -1167,14 +1261,14 @@ function syncFilterForm() {
   const f = state.filter;
   CAT_ORDER.forEach((k) => ($("#fc_" + k).checked = f.cats.includes(k)));
   $("#ms" + f.minStars).checked = true;
-  $("#fCovered").checked = f.covered; $("#fPublic").checked = f.publicOnly;
+  $("#fCovered").checked = f.covered; $("#fPublic").checked = f.publicOnly; $("#fDemand").checked = f.demand !== false;
   updateFilterCount();
 }
 function readFilterForm() {
   return {
     cats: CAT_ORDER.filter((k) => $("#fc_" + k).checked),
     minStars: parseInt(new FormData($("#filterForm")).get("minStars") || "0", 10),
-    covered: $("#fCovered").checked, publicOnly: $("#fPublic").checked,
+    covered: $("#fCovered").checked, publicOnly: $("#fPublic").checked, demand: $("#fDemand").checked,
   };
 }
 function updateFilterCount() {
@@ -1189,7 +1283,7 @@ $("#filterForm").addEventListener("submit", (e) => {
   render(); $("#dlgFilter").close();
 });
 $("#filterReset").addEventListener("click", () => {
-  state.filter = { cats: CAT_ORDER.slice(), minStars: 0, covered: false, publicOnly: false };
+  state.filter = { cats: CAT_ORDER.slice(), minStars: 0, covered: false, publicOnly: false, demand: true };
   prefs.set("filter", state.filter); syncFilterForm(); render();
 });
 
@@ -1219,15 +1313,21 @@ function locate(center = true) {
 }
 
 /* ---------- pridanie stojana ---------- */
-let addPoint = null, addPhotoBlob = null;
-function enterAddMode() {
+let addPoint = null, addPhotoBlob = null, addMode = "rack";
+function enterAddMode(mode = "rack") {
+  addMode = mode;
+  $("#addbarText").innerHTML = mode === "demand"
+    ? "<strong>Kde chýba stojan?</strong> Posuň mapu tak, aby bol krížik na mieste, kde by si potreboval zamknúť bicykel."
+    : "<strong>Pridanie stojana, krok 1 z 2.</strong> Posuň mapu tak, aby bol krížik presne na mieste stojana.";
   document.querySelectorAll("dialog[open]").forEach((d) => d.close());
   if (map.getZoom() < 17) map.setZoom(17);
   $("#crosshair").hidden = false; $("#addbar").hidden = false; $("#btnLocate").hidden = true;
   $("#addConfirm").focus();
 }
 function exitAddMode() { $("#crosshair").hidden = true; $("#addbar").hidden = true; $("#btnLocate").hidden = false; }
-$("#btnAdd").addEventListener("click", enterAddMode);
+$("#btnAdd").addEventListener("click", () => openSheet("dlgChoose"));
+$("#chooseRack").addEventListener("click", () => enterAddMode("rack"));
+$("#chooseDemand").addEventListener("click", () => enterAddMode("demand"));
 $("#addCancel").addEventListener("click", () => { exitAddMode(); $("#btnAdd").focus(); });
 $("#addUseGps").addEventListener("click", () => {
   if (state.me) map.setView(state.me, 18); else locate(true);
@@ -1237,7 +1337,7 @@ $("#addConfirm").addEventListener("click", () => {
   if (!inBBox(c.lat, c.lng)) { toast("Toto miesto je mimo Bratislavy. Posuň mapu na stojan v meste."); return; }
   addPoint = [c.lat, c.lng];
   exitAddMode();
-  openAddForm();
+  if (addMode === "demand") openDemandForm(addPoint); else openAddForm();
 });
 function buildAddForm() {
   $("#addCats").innerHTML = CAT_ORDER.filter((k) => k !== "unknown").map((k) => `
@@ -1287,6 +1387,101 @@ $("#addForm").addEventListener("submit", async (e) => {
     err.textContent = "Stojan sa nepodarilo odoslať. Skontroluj pripojenie a skús znova."; err.hidden = false;
   } finally { btn.disabled = false; btn.textContent = "Odoslať na schválenie"; }
 });
+
+/* ---------- miesta, kde chýba stojan ---------- */
+// Hlásenia bližšie ako DEMAND_METERS sa spájajú do jedného miesta s počtom hlasov.
+function myDemandPoints() { return prefs.get("myDemand", []); }
+function votedNear(pt) { return myDemandPoints().some((p) => distM(p, pt) <= CONFIG.DEMAND_METERS); }
+function demandGroups() {
+  const rows = state.demand.slice().sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  const groups = [];
+  for (const d of rows) {
+    let g = groups.find((x) => distM([x.lat, x.lon], [d.lat, d.lon]) <= CONFIG.DEMAND_METERS);
+    if (!g) { g = { lat: d.lat, lon: d.lon, n: 0, ids: [], reasons: {}, first: d.createdAt, last: d.createdAt }; groups.push(g); }
+    g.lat = (g.lat * g.n + d.lat) / (g.n + 1); g.lon = (g.lon * g.n + d.lon) / (g.n + 1);
+    g.n++; g.ids.push(d.id); g.reasons[d.reason] = (g.reasons[d.reason] || 0) + 1; g.last = d.createdAt;
+  }
+  // Miesto je vybavené, keď sa po poslednom hlase v jeho blízkosti objaví nový stojan (z OSM alebo schválený).
+  return groups.filter((g) => !allRacks().some((r) => {
+    const after = r.source === "osm" ? r.seen : (r.approvedAt || "").slice(0, 10);
+    return after && after >= String(g.last).slice(0, 10) && distM([r.lat, r.lon], [g.lat, g.lon]) <= CONFIG.DEMAND_METERS;
+  }));
+}
+const demandLayer = L.layerGroup().addTo(map);
+function demandTitle(g) { return `Tu chýba stojan, ${g.n} ${plural(g.n, "hlas", "hlasy", "hlasov")}`; }
+function renderDemand() {
+  demandLayer.clearLayers();
+  if (state.filter.demand === false) return;
+  for (const g of demandGroups()) {
+    const icon = L.divIcon({ className: "demand-wrap", html: `<span class="demand-pin" aria-hidden="true">${DEMAND_ICON}${g.n}</span>`, iconSize: [44, 34], iconAnchor: [22, 17] });
+    const m = L.marker([g.lat, g.lon], { icon, title: demandTitle(g), keyboard: true, zIndexOffset: 500 });
+    m.on("add", () => { const el = m.getElement(); if (el) el.setAttribute("aria-label", demandTitle(g)); });
+    m.on("click", () => openDemandDetail(g));
+    demandLayer.addLayer(m);
+  }
+}
+
+let demandPoint = null;
+function buildDemandForm() {
+  $("#demandReasons").innerHTML = Object.entries(REASONS).map(([k, v]) =>
+    `<label for="dr_${k}"><input type="radio" name="reason" id="dr_${k}" value="${k}"><span>${esc(v)}</span></label>`).join("");
+}
+function openDemandForm(pt) {
+  demandPoint = pt;
+  $("#demandForm").reset(); $("#demandError").hidden = true;
+  const info = $("#demandInfo"), btn = $("#demandSubmit");
+  const g = demandGroups().find((x) => distM([x.lat, x.lon], pt) <= CONFIG.DEMAND_METERS);
+  const near = allRacks().map((r) => ({ r, d: distM([r.lat, r.lon], pt) })).filter((x) => x.d <= CONFIG.DEMAND_METERS).sort((a, b) => a.d - b.d)[0];
+  const msgs = [];
+  if (g) msgs.push(`Toto miesto už ${plural(g.n, "žiada", "žiadajú", "žiada")} ${g.n} ${plural(g.n, "človek", "ľudia", "ľudí")}. Tvoj hlas sa k nim pripočíta.`);
+  if (near) msgs.push(`Do ${Math.max(5, Math.round(near.d / 5) * 5)} m je už stojan (${CATS[near.r.cat].label}). Hlásenie má zmysel, ak je plný, nevhodný alebo nedostupný.`);
+  info.textContent = msgs.join(" "); info.hidden = !msgs.length;
+  btn.disabled = false; btn.textContent = "Pridať môj hlas";
+  if (votedNear(pt)) {
+    info.textContent = "Na tomto mieste si už hlasoval. Ďakujeme!"; info.hidden = false; btn.disabled = true;
+  }
+  openSheet("dlgDemand");
+}
+$("#demandForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const reason = new FormData(e.target).get("reason");
+  const err = $("#demandError");
+  if (!reason) { err.textContent = "Vyber, prečo by si tu potreboval stojan."; err.hidden = false; $("#dr_work").focus(); return; }
+  const btn = $("#demandSubmit"); btn.disabled = true; btn.textContent = "Odosielam…";
+  try {
+    await state.store.addDemand({ lat: demandPoint[0], lon: demandPoint[1], reason });
+    const mine = myDemandPoints(); mine.push(demandPoint); prefs.set("myDemand", mine);
+    await loadUserData(); render();
+    $("#dlgDemand").close();
+    toast("Ďakujeme! Tvoj hlas je zapísaný.");
+  } catch (ex) {
+    console.error(ex);
+    err.textContent = ex.code === "already" ? "Na tomto mieste si už hlasoval." : "Hlas sa nepodarilo uložiť. Skontroluj pripojenie a skús znova.";
+    err.hidden = false; btn.disabled = false; btn.textContent = "Pridať môj hlas";
+  }
+});
+
+function openDemandDetail(g) {
+  $("#demandDetailTitle").textContent = "Tu chýba stojan";
+  const reasons = Object.entries(g.reasons).sort((a, b) => b[1] - a[1]);
+  let h = `<div class="score"><span class="big">${g.n}</span><span class="lead">${plural(g.n, "človek by tu chcel", "ľudia by tu chceli", "ľudí by tu chcelo")} stojan</span></div>`;
+  h += `<ul class="bars">` + reasons.map(([k, c]) => `<li><div class="bar-top"><span>${esc(REASONS[k] || k)}</span><b>${c}</b></div><div class="bar" aria-hidden="true"><i style="width:${Math.round((c / g.n) * 100)}%;background:var(--c-demand)"></i></div></li>`).join("") + `</ul>`;
+  h += `<p class="lead">Prvé hlásenie ${esc(new Date(g.first).toLocaleDateString("sk-SK"))}${g.n > 1 ? `, posledné ${esc(new Date(g.last).toLocaleDateString("sk-SK"))}` : ""}.</p>`;
+  const voted = votedNear([g.lat, g.lon]);
+  h += voted ? `<p class="notice ok">Tu si už hlasoval. Ďakujeme!</p>` : `<button class="btn primary block" type="button" id="btnVote">Aj ja by som tu chcel stojan</button>`;
+  h += `<button class="btn block" type="button" id="btnBuilt">Stojan tu už stojí? Pridaj ho na mapu</button>`;
+  if (state.store.isAdmin()) h += `<div class="admin-item"><p class="lead">Správca: ak ide o spam, môžeš všetky hlasy na tomto mieste odstrániť.</p><button class="btn danger" type="button" id="btnDemandDel">Odstrániť ${g.n} ${plural(g.n, "hlas", "hlasy", "hlasov")}</button></div>`;
+  const body = $("#demandDetailBody"); body.innerHTML = h;
+  const vote = $("#btnVote", body); if (vote) vote.onclick = () => openDemandForm([g.lat, g.lon]);
+  $("#btnBuilt", body).onclick = () => { map.setView([g.lat, g.lon], 18); enterAddMode("rack"); };
+  const del = $("#btnDemandDel", body);
+  if (del) del.onclick = async () => {
+    if (!del.dataset.confirm) { del.dataset.confirm = "1"; del.textContent = "Naozaj odstrániť? Klikni znova"; return; }
+    try { await state.store.deleteDemand(g.ids); await loadUserData(); render(); $("#dlgDemandDetail").close(); toast("Hlasy sú odstránené."); }
+    catch (ex) { console.error(ex); toast("Hlasy sa nepodarilo odstrániť."); }
+  };
+  openSheet("dlgDemandDetail");
+}
 
 /* ---------- info, legenda, správca ---------- */
 function buildLegend() {
@@ -1422,7 +1617,7 @@ $("#btnRefresh").addEventListener("click", () => { $("#dlgInfo").close(); loadOS
 
 /* ---------- štart ---------- */
 (async function start() {
-  buildFilter(); buildAddForm(); buildRateForm(); buildLegend();
+  buildFilter(); buildAddForm(); buildDemandForm(); buildRateForm(); buildLegend();
   const useSb = CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY;
   state.store = useSb ? new SupabaseStore(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : new LocalStore();
   try { await state.store.init(); }
