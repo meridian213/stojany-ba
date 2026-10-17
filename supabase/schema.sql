@@ -38,10 +38,16 @@ create table if not exists public.ratings (
 );
 
 -- Je prihlásený používateľ správca?
-create or replace function public.is_admin() returns boolean
-language sql stable security definer set search_path = public as $$
+-- Funkcia je v neverejnej schéme „private“, aby sa nedala volať cez API (/rest/v1/rpc).
+-- Prístupové pravidlá ju volať môžu.
+create schema if not exists private;
+grant usage on schema private to anon, authenticated;
+create or replace function private.is_admin() returns boolean
+language sql stable security definer set search_path = '' as $$
   select exists (select 1 from public.admins where email = (auth.jwt() ->> 'email'));
 $$;
+revoke execute on function private.is_admin() from public;
+grant execute on function private.is_admin() to anon, authenticated;
 
 alter table public.admins  enable row level security;
 alter table public.racks   enable row level security;
@@ -55,7 +61,7 @@ create policy admins_self on public.admins for select to authenticated
 -- racks: všetci vidia schválené, správca všetko
 drop policy if exists racks_read on public.racks;
 create policy racks_read on public.racks for select to anon, authenticated
-  using (status = 'approved' or public.is_admin());
+  using (status = 'approved' or private.is_admin());
 
 -- racks: ktokoľvek môže navrhnúť, ale vždy len ako „čaká na schválenie“
 drop policy if exists racks_insert on public.racks;
@@ -65,7 +71,7 @@ create policy racks_insert on public.racks for insert to anon, authenticated
 -- racks: meniť stav môže len správca
 drop policy if exists racks_admin_update on public.racks;
 create policy racks_admin_update on public.racks for update to authenticated
-  using (public.is_admin()) with check (public.is_admin());
+  using (private.is_admin()) with check (private.is_admin());
 
 -- ratings: ktokoľvek číta a pridáva; meniť ani mazať sa nedá
 drop policy if exists ratings_read on public.ratings;
