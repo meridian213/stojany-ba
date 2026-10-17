@@ -430,7 +430,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
     </fieldset>
     <div class="field">
       <span class="label" id="photoLabel">Fotka stojana</span>
-      <p class="hint" id="photoHint">Pomôže správcovi stojan overiť. Z fotky sa pred odoslaním odstráni poloha a ďalšie údaje.</p>
+      <p class="hint" id="photoHint">Pomôže správcovi stojan overiť. Fotíš len stojan, nie ľudí ani evidenčné čísla áut. Z fotky sa pred odoslaním odstráni poloha a ďalšie údaje.</p>
       <div class="photo-drop">
         <img id="addPhotoPreview" alt="Náhľad vybranej fotky" hidden>
         <input type="file" id="addPhoto" accept="image/*" class="sr-only" aria-labelledby="photoLabel" aria-describedby="photoHint">
@@ -448,12 +448,9 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <p class="hint" id="noteHint">Napr. „za vchodom do knižnice“. Najviac 300 znakov.</p>
       <textarea id="addNote" maxlength="300" aria-describedby="noteHint"></textarea>
     </div>
-    <label class="switch" for="addOsmConsent">
-      <span>Súhlasím, aby sa údaje a fotka použili na doplnenie stojana do OpenStreetMap (licencia ODbL).</span>
-      <input type="checkbox" id="addOsmConsent" checked>
-    </label>
     <p class="notice" id="addError" role="alert" hidden></p>
-    <button class="btn primary block" type="submit" id="addSubmit">Odoslať na schválenie</button>
+    <button class="btn primary block" type="submit" id="addSubmit" aria-describedby="addTerms">Odoslať na schválenie</button>
+    <p class="hint" id="addTerms">Odoslaním súhlasíš, že údaje o stojane a fotka sa po schválení zverejnia v tejto aplikácii a môžu sa použiť na doplnenie stojana do OpenStreetMap (licencia ODbL).</p>
   </form>
 </dialog>
 
@@ -1277,7 +1274,7 @@ $("#addForm").addEventListener("submit", async (e) => {
   const cap = parseInt($("#addCapacity").value, 10);
   if ($("#addCapacity").value && (!Number.isFinite(cap) || cap < 1 || cap > 500)) { err.textContent = "Počet miest musí byť číslo od 1 do 500."; err.hidden = false; $("#addCapacity").focus(); return; }
   const cov = fd.get("addCovered");
-  const data = { lat: addPoint[0], lon: addPoint[1], cat, capacity: Number.isFinite(cap) ? cap : null, covered: cov === "yes" ? true : cov === "no" ? false : null, note: $("#addNote").value.trim().slice(0, 300), osmConsent: $("#addOsmConsent").checked };
+  const data = { lat: addPoint[0], lon: addPoint[1], cat, capacity: Number.isFinite(cap) ? cap : null, covered: cov === "yes" ? true : cov === "no" ? false : null, note: $("#addNote").value.trim().slice(0, 300), osmConsent: true };   // súhlas je daný odoslaním formulára (text pod tlačidlom)
   const btn = $("#addSubmit"); btn.disabled = true; btn.textContent = "Odosielam…";
   try {
     const rack = await state.store.addRack(data, addPhotoBlob);
