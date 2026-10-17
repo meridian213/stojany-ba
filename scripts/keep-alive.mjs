@@ -15,7 +15,7 @@ if (!url || !key) {
 }
 
 const res = await fetch(`${url.replace(/\/$/, "")}/rest/v1/ratings?select=stars&limit=1`, {
-  headers: { apikey: key, Authorization: `Bearer ${key}` },
+  headers: { apikey: key },   // nové kľúče (sb_publishable_…) sa posielajú len v hlavičke apikey
   signal: AbortSignal.timeout(30_000),
 });
 if (!res.ok) {

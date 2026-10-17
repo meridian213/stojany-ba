@@ -38,13 +38,13 @@ Bez tohto kroku stránka funguje, ale hodnotenia a návrhy sa ukladajú len v te
 4. **Povoľ prihlásenie zo stránky**: *Authentication → URL Configuration*
    - *Site URL*: `https://<tvoje-meno>.github.io/stojany-ba/`
    - *Redirect URLs*: tá istá adresa
-5. **Prepoj stránku**: *Project Settings → API* skopíruj **Project URL** a kľúč **anon public**. V GitHube otvor `site/index.html`, klikni na ceruzku (Edit) a vyplň na začiatku skriptu:
+5. **Prepoj stránku**: *Project Settings → API* skopíruj **Project URL** a verejný kľúč **Publishable key** (`sb_publishable_…`, v starších projektoch **anon public**). V GitHube otvor `site/index.html`, klikni na ceruzku (Edit) a vyplň na začiatku skriptu:
    ```js
    SUPABASE_URL: "https://xxxx.supabase.co",
    SUPABASE_ANON_KEY: "eyJ...",
    ```
    Ulož (*Commit changes*). Stránka sa o pár minút zverejní znova.
-   Kľúč `anon` je určený na verejné použitie, chránia ho prístupové pravidlá v databáze. Kľúč **service_role** sem nikdy nedávaj.
+   Verejný kľúč je určený na použitie v prehliadači, dáta chránia prístupové pravidlá v databáze. Kľúč **secret** ani **service_role** sem nikdy nedávaj.
 6. **Vyskúšaj**: na telefóne pridaj skúšobný stojan, potom sa v menu ☰ → *Správca* prihlás e-mailom a návrh schváľ.
 
 ## Údržba a obmedzenia

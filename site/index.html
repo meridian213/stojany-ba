@@ -501,8 +501,8 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
    Po vyplnení sa nové stojany, fotky a hodnotenia zdieľajú medzi všetkými.
    ========================================================================= */
 const CONFIG = {
-  SUPABASE_URL: "",        // napr. "https://abcd1234.supabase.co"
-  SUPABASE_ANON_KEY: "",   // verejný „anon“ kľúč z Supabase (nie service_role!)
+  SUPABASE_URL: "https://poyahnqixjxmjdvgsafm.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_wS364PdWtS6nEGT17z5tTQ_4uzsjkln",   // verejný kľúč (publishable/anon), nikdy nie secret/service_role
   CENTER: [48.1486, 17.1077],
   BBOX: [48.0, 16.95, 48.27, 17.34], // juh, západ, sever, východ – záloha a kontrola pri pridávaní
   DATA_URL: "data/osm.json",   // stojany stiahnuté každú noc (GitHub Actions)
@@ -654,7 +654,7 @@ class LocalStore {
 class SupabaseStore {
   constructor(url, key) { this.mode = "supabase"; this.url = url; this.key = key; this.admin = false; }
   async init() {
-    await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js");
+    await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js");
     this.sb = window.supabase.createClient(this.url, this.key);
     const { data } = await this.sb.auth.getSession();
     this.session = data.session;
