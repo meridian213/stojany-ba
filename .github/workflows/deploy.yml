@@ -43,12 +43,13 @@ jobs:
       - name: Uložiť dáta do repozitára
         if: steps.osm.outcome == 'success'
         run: |
-          if git diff --quiet -- site/data/osm.json; then
+          git add -N site/data
+          if git diff --quiet -- site/data; then
             echo "Žiadne zmeny v stojanoch."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add site/data/osm.json
+            git add site/data
             git commit -m "Aktualizácia stojanov z OSM"
             git push
           fi

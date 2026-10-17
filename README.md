@@ -6,13 +6,17 @@ Mobilná mapa cyklostojanov v Bratislave. Stojany sa každú noc automaticky sť
 
 | Cesta | Na čo slúži |
 |---|---|
-| `site/index.html` | Celá aplikácia (HTML, CSS, JavaScript v jednom súbore). |
-| `site/data/osm.json` | Stojany z OSM. Prepisuje ho nočná aktualizácia. |
-| `scripts/update-osm.mjs` | Stiahne stojany z Overpass API a zaznamená, ktoré pribudli a ktoré zmizli. Pri chybe, podozrivo malom počte alebo hromadnom zmiznutí stojanov súbor neprepíše. |
+| `site/index.html` | Mapa – celá aplikácia (HTML, CSS, JavaScript v jednom súbore). |
+| `site/prehlad.html` | Prehľad pre mesto: počty po mestských častiach, najžiadanejšie miesta, hodnotenia, vývoj po mesiacoch a dáta na stiahnutie. |
+| `site/config.js` | Adresa a verejný kľúč Supabase. |
+| `site/data/osm.json` | Stojany z OSM, každý s číslom mestskej časti. Prepisuje ho nočná aktualizácia. |
+| `site/data/districts.json` | Hranice 17 mestských častí z OSM (zjednodušené). Obnovuje sa raz za 30 dní. |
+| `site/data/history.json` | Mesačné súhrny (počet stojanov, kapacita, nevhodné, zastrešené) – stav na konci mesiaca. |
+| `scripts/update-osm.mjs` | Stiahne stojany z Overpass API, priradí ich k mestským častiam, zapíše mesačný súhrn a zaznamená, ktoré stojany pribudli a ktoré zmizli. Pri chybe, podozrivo malom počte alebo hromadnom zmiznutí stojanov súbor neprepíše. |
 | `scripts/keep-alive.mjs` | Každú noc pošle do Supabase malý dotaz, aby sa projekt nepozastavil. |
 | `.github/workflows/deploy.yml` | Každú noc o 2:17 UTC stiahne dáta a zverejní stránku. Beží aj po každej zmene a dá sa spustiť ručne. |
 | `supabase/schema.sql` | Databáza pre hodnotenia, návrhy a fotky vrátane prístupových pravidiel. |
-| `supabase/migrations/` | Zmeny pre už existujúcu databázu. Spúšťajú sa ručne v SQL Editore v poradí podľa čísla. |
+| `supabase/migrations/` | Zmeny pre už existujúcu databázu (002 až 005, 005 = hlásenia „Tu chýba stojan“). Spúšťajú sa ručne v SQL Editore v poradí podľa čísla. |
 
 ## Zverejnenie na GitHub Pages
 
@@ -39,10 +43,10 @@ Bez tohto kroku stránka funguje, ale hodnotenia a návrhy sa ukladajú len v te
 4. **Povoľ prihlásenie zo stránky**: *Authentication → URL Configuration*
    - *Site URL*: `https://<tvoje-meno>.github.io/stojany-ba/`
    - *Redirect URLs*: tá istá adresa
-5. **Prepoj stránku**: *Project Settings → API* skopíruj **Project URL** a verejný kľúč **Publishable key** (`sb_publishable_…`, v starších projektoch **anon public**). V GitHube otvor `site/index.html`, klikni na ceruzku (Edit) a vyplň na začiatku skriptu:
+5. **Prepoj stránku**: *Project Settings → API* skopíruj **Project URL** a verejný kľúč **Publishable key** (`sb_publishable_…`, v starších projektoch **anon public**). V GitHube otvor `site/config.js`, klikni na ceruzku (Edit) a vyplň:
    ```js
    SUPABASE_URL: "https://xxxx.supabase.co",
-   SUPABASE_ANON_KEY: "eyJ...",
+   SUPABASE_ANON_KEY: "sb_publishable_...",
    ```
    Ulož (*Commit changes*). Stránka sa o pár minút zverejní znova.
    Verejný kľúč je určený na použitie v prehliadači, dáta chránia prístupové pravidlá v databáze. Kľúč **secret** ani **service_role** sem nikdy nedávaj.
@@ -51,7 +55,7 @@ Bez tohto kroku stránka funguje, ale hodnotenia a návrhy sa ukladajú len v te
 ## Údržba a obmedzenia
 
 - **Neaktívny repozitár**: GitHub vypne naplánované spúšťanie, ak sa v repozitári 60 dní nič nedeje. Nočná aktualizácia ukladá dáta späť do repozitára, takže by k tomu nemalo dôjsť. Ak sa to stane, v *Actions* stačí workflow znova povoliť.
-- **Supabase na bezplatnom pláne** pozastaví projekt po týždni bez aktivity. Ako poistka pošle nočná aktualizácia do databázy jeden malý dotaz (`scripts/keep-alive.mjs`, adresu a kľúč berie zo `site/index.html`). Ak by sa projekt aj tak pozastavil, príde e-mail a v Supabase ho obnovíš tlačidlom *Resume project*, dáta zostanú zachované.
+- **Supabase na bezplatnom pláne** pozastaví projekt po týždni bez aktivity. Ako poistka pošle nočná aktualizácia do databázy jeden malý dotaz (`scripts/keep-alive.mjs`, adresu a kľúč berie zo `site/config.js`). Ak by sa projekt aj tak pozastavil, príde e-mail a v Supabase ho obnovíš tlačidlom *Resume project*, dáta zostanú zachované.
 - **Mapové dlaždice** sa berú z tile.openstreetmap.org. Pri malej návštevnosti je to v poriadku. Pri väčšej treba podľa pravidiel OSM prejsť na iného poskytovateľa máp.
 - **Výpadok OSM**: ak sa stojany v noci nepodarí stiahnuť, zverejnia sa posledné dobré dáta a v *Actions* sa zobrazí upozornenie.
 

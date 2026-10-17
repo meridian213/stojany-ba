@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d5bd8">
+<title>Cyklostojany Bratislava – prehľad pre mesto</title>
+<meta name="description" content="Koľko cyklostojanov má Bratislava a jej mestské časti, aké sú a kde ľudia hlásia, že chýbajú.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Overpass:wght@700;800&display=swap">
+<style>
+/* Layout: jeden stĺpec dokumentu (max ~70 rem), sekcie pod sebou; na tlač bez ovládacích prvkov. */
+:root {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --fg: #14213a;
+  --muted: #4f5b72;
+  --line: #ccd4e1;
+  --accent: #1d5bd8;        /* modrá ako dopravná značka „cestička pre cyklistov“ */
+  --accent-fg: #ffffff;
+  --accent-soft: #e2ebfd;
+  --c-safe: #1b7442;
+  --c-shelter: #6a3fb5;
+  --c-informal: #9a5b00;
+  --c-bad: #c0282d;
+  --c-unknown: #5f6779;
+  --c-demand: #b4176f;   /* miesta, kde chýba stojan */
+  --star: #c98a00;
+  --ok-bg: #e3f3ea;
+  --warn-bg: #fff3d6;
+  --shadow: 0 6px 24px rgba(16, 28, 52, .18);
+  --f-display: "Overpass", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tap: 48px;
+  --r: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
+    --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
+    --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5;
+    --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
+  --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
+  --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5;
+  --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 var(--f-body); }
+[hidden] { display: none !important; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; border-radius: 4px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+.wrap {
+  max-width: 70rem; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-block: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-decoration: none; color: var(--fg); }
+.brand-mark { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+.brand-mark svg { width: 22px; height: 22px; }
+.brand strong { font: 800 1.15rem/1.1 var(--f-display); padding-top: 3px; }
+.btn {
+  min-height: 44px; padding: 8px 16px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  font: 700 .95rem/1.2 var(--f-body); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+}
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn svg { width: 18px; height: 18px; }
+
+main .wrap { padding-block: 24px 48px; display: grid; gap: 40px; }
+main .wrap > * { min-width: 0; }
+h1 { font: 800 clamp(1.7rem, 4.5vw, 2.6rem)/1.08 var(--f-display); margin: 0; letter-spacing: -.015em; text-wrap: balance; }
+h2 { font: 800 1.35rem/1.15 var(--f-display); margin: 0 0 4px; text-wrap: balance; }
+.lede { color: var(--muted); margin: 8px 0 0; max-width: 62ch; }
+.meta { color: var(--muted); font-size: .9rem; margin: 6px 0 0; }
+section > p { max-width: 65ch; }
+.section-head { display: grid; gap: 4px; margin-bottom: 14px; }
+.section-head p { color: var(--muted); margin: 0; max-width: 65ch; }
+
+/* súhrnné čísla – tu sú čísla hlavnou správou stránky */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 12px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; display: grid; gap: 4px; align-content: start; }
+.tile .k { color: var(--muted); font-size: .9rem; font-weight: 700; }
+.tile .v { font: 800 2.2rem/1 var(--f-display); font-variant-numeric: tabular-nums; padding-top: 4px; }
+.tile .s { color: var(--muted); font-size: .88rem; }
+.tile.alert .v { color: var(--c-bad); }
+.tile.demand .v { color: var(--c-demand); }
+
+/* tabuľky */
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+caption { text-align: left; padding: 12px 14px 0; color: var(--muted); font-size: .9rem; }
+th, td { padding: 10px 14px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: .85rem; color: var(--muted); font-weight: 700; vertical-align: bottom; }
+thead th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+thead th button:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; border-radius: 4px; }
+thead th[aria-sort] button::after { content: "↓"; font-size: .8em; }
+thead th[aria-sort="ascending"] button::after { content: "↑"; }
+tbody tr:last-child td { border-bottom: none; }
+tfoot td { font-weight: 700; border-top: 2px solid var(--line); border-bottom: none; }
+.pct { display: inline-grid; grid-template-columns: 3.2em 4.5em; gap: 8px; align-items: center; justify-items: end; }
+.pct i { display: block; height: 8px; width: 100%; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.pct i b { display: block; height: 100%; background: var(--c-bad); border-radius: 0 4px 4px 0; }
+
+/* rebríčky */
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: r; }
+.rank li {
+  counter-increment: r; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r);
+  display: grid; grid-template-columns: 2.2rem 1fr auto; gap: 2px 12px; align-items: center; padding: 12px 14px;
+}
+.rank li::before { content: counter(r); grid-row: span 2; font: 800 1.2rem/1 var(--f-display); color: var(--muted); padding-top: 3px; }
+.rank .t { font-weight: 700; min-width: 0; }
+.rank .m { color: var(--muted); font-size: .9rem; grid-column: 2; min-width: 0; }
+.rank .n { grid-row: span 2; text-align: right; font: 800 1.4rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.rank .n small { display: block; font: 400 .75rem/1.2 var(--f-body); color: var(--muted); }
+.rank.demand .n { color: var(--c-demand); }
+.rank a { font-size: .9rem; }
+.empty { color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: var(--r); padding: 16px; margin: 0; }
+
+/* grafy */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); gap: 12px; }
+figure.chart { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 14px 10px; position: relative; min-width: 0; }
+figure.chart figcaption { font-weight: 700; margin-bottom: 6px; }
+figure.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .axis { fill: var(--muted); font: 12px var(--f-body); }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .area { opacity: .12; }
+.chart .dot { stroke: var(--surface); stroke-width: 2; }
+.chart .hit { fill: transparent; cursor: pointer; }
+.chart .endlabel { font: 800 13px var(--f-display); fill: var(--fg); }
+.tip {
+  position: absolute; pointer-events: none; background: var(--fg); color: var(--bg); border-radius: 8px; padding: 6px 10px;
+  font-size: .85rem; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); box-shadow: var(--shadow);
+}
+.note { color: var(--muted); font-size: .9rem; margin: 8px 0 0; }
+details { margin-top: 8px; }
+summary { cursor: pointer; color: var(--accent); font-weight: 700; }
+
+.downloads { display: flex; flex-wrap: wrap; gap: 8px; }
+.method { display: grid; gap: 8px; color: var(--muted); font-size: .95rem; max-width: 70ch; }
+.method p { margin: 0; }
+.status { background: var(--warn-bg); border-radius: var(--r); padding: 12px 14px; margin: 0; }
+footer { color: var(--muted); font-size: .85rem; padding-block: 0 32px; }
+
+@media print {
+  body { background: #fff; color: #000; }
+  header.top .actions, .downloads, .no-print, details summary { display: none !important; }
+  details > * { display: block !important; }
+  section { break-inside: avoid-page; }
+  .table-wrap, .tile, figure.chart, .rank li { border-color: #bbb; }
+  a { color: #000; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2.5"/></svg></span>
+      <strong>Cyklostojany Bratislava</strong>
+    </a>
+    <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn" href="index.html">Späť na mapu</a>
+      <button class="btn" type="button" id="btnPrint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4v-7h16v7h-2M6 14h12v7H6z"/></svg>
+        Vytlačiť alebo uložiť PDF
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+    <div>
+      <h1>Kde v Bratislave chýbajú cyklostojany</h1>
+      <p class="lede">Prehľad pre magistrát, mestské časti a médiá: koľko stojanov mesto má, aké sú, ako ich hodnotia ľudia a kde hlásia, že by stojan potrebovali.</p>
+      <p class="meta" id="asOf">Načítavam údaje…</p>
+    </div>
+    <p class="status" id="loadStatus" role="status" hidden></p>
+
+    <section aria-labelledby="sumTitle">
+      <div class="section-head"><h2 id="sumTitle">Súhrn</h2></div>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <section aria-labelledby="distTitle">
+      <div class="section-head">
+        <h2 id="distTitle">Mestské časti</h2>
+        <p>Klikni na názov stĺpca a tabuľka sa podľa neho zoradí. „Nevhodné“ sú stojany, ktoré držia len koleso a rám sa k nim zamknúť nedá.</p>
+      </div>
+      <div class="table-wrap">
+        <table id="distTable">
+          <caption id="distCaption"></caption>
+          <thead><tr>
+            <th scope="col" data-k="name"><button type="button">Mestská časť</button></th>
+            <th scope="col" data-k="racks" aria-sort="descending"><button type="button">Stojany</button></th>
+            <th scope="col" data-k="cap"><button type="button">Miesta</button></th>
+            <th scope="col" data-k="badPct"><button type="button">Nevhodné</button></th>
+            <th scope="col" data-k="coveredPct"><button type="button">Zastrešené</button></th>
+            <th scope="col" data-k="votes"><button type="button">Hlasy za nové</button></th>
+            <th scope="col" data-k="avg"><button type="button">Hodnotenie</button></th>
+          </tr></thead>
+          <tbody></tbody>
+          <tfoot></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="demandTitle">
+      <div class="section-head">
+        <h2 id="demandTitle">Najžiadanejšie miesta bez stojana</h2>
+        <p>Miesta, kde ľudia v aplikácii hlásili, že nemali kam zamknúť bicykel. Hlásenia do 30 m od seba sa počítajú spolu, jedno zariadenie má na mieste jeden hlas.</p>
+      </div>
+      <ol class="rank demand" id="demandList"></ol>
+      <p class="note" id="reasonNote"></p>
+    </section>
+
+    <section aria-labelledby="qualTitle">
+      <div class="section-head">
+        <h2 id="qualTitle">Najhoršie hodnotené stojany</h2>
+        <p id="qualLead">Hodnotenia od používateľov aplikácie, 1 až 5 hviezdičiek.</p>
+      </div>
+      <ol class="rank" id="worstList"></ol>
+    </section>
+
+    <section aria-labelledby="trendTitle">
+      <div class="section-head">
+        <h2 id="trendTitle">Vývoj po mesiacoch</h2>
+        <p>Stav na konci mesiaca. Údaje sa zbierajú od októbra 2026, grafy sa budú postupne napĺňať.</p>
+      </div>
+      <div class="charts">
+        <figure class="chart" id="chartRacks"><figcaption>Stojany v OpenStreetMap</figcaption></figure>
+        <figure class="chart" id="chartVotes"><figcaption>Hlasy „tu chýba stojan“ spolu</figcaption></figure>
+      </div>
+      <details>
+        <summary>Zobraziť ako tabuľku</summary>
+        <div class="table-wrap" style="margin-top:8px">
+          <table id="trendTable"><thead><tr><th scope="col">Mesiac</th><th scope="col">Stojany</th><th scope="col">Miesta</th><th scope="col">Nevhodné</th><th scope="col">Hlasy spolu</th></tr></thead><tbody></tbody></table>
+        </div>
+      </details>
+    </section>
+
+    <section aria-labelledby="dlTitle">
+      <div class="section-head">
+        <h2 id="dlTitle">Dáta na stiahnutie</h2>
+        <p>Otvorené dáta pod licenciou ODbL. Pri použití uveď „© prispievatelia OpenStreetMap a používatelia aplikácie Cyklostojany Bratislava“. CSV sa otvorí v Exceli (oddeľovač bodkočiarka).</p>
+      </div>
+      <div class="downloads">
+        <button class="btn" type="button" data-dl="racks-csv">Stojany (CSV)</button>
+        <button class="btn" type="button" data-dl="racks-geojson">Stojany (GeoJSON)</button>
+        <button class="btn" type="button" data-dl="demand-csv">Miesta bez stojana (CSV)</button>
+        <button class="btn" type="button" data-dl="demand-geojson">Miesta bez stojana (GeoJSON)</button>
+        <button class="btn" type="button" data-dl="districts-csv">Mestské časti (CSV)</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="methTitle" class="method">
+      <h2 id="methTitle" style="color:var(--fg)">Ako čítať čísla</h2>
+      <p><strong>Stojany</strong> pochádzajú z OpenStreetMap (značka amenity=bicycle_parking) a sťahujú sa každú noc. Pribudnú k nim návrhy z aplikácie, ktoré schválil správca. Jedna položka je jedno miesto so stojanmi, nie jeden kus stojana.</p>
+      <p><strong>Miesta</strong> sú súčet kapacít, teda koľko bicyklov sa zmestí. Pri časti stojanov kapacita v dátach chýba, preto je skutočný počet o niečo vyšší.</p>
+      <p><strong>Nevhodné</strong> sú typy wall_loops, ground_slots, handlebar_holder a crossbar, teda „lámače kolies“, pri ktorých sa nedá zamknúť rám bicykla.</p>
+      <p><strong>Hlasy a hodnotenia</strong> sú anonymné a viazané na zariadenie. Nie sú reprezentatívnym prieskumom, ukazujú však, kde ľudia stojany reálne potrebujú. Miesto bez stojana zmizne z prehľadu, keď v jeho okolí pribudne stojan.</p>
+      <p>Úplnosť OSM sa v jednotlivých častiach mesta líši. Nízke číslo môže znamenať aj to, že stojany ešte nikto nezmapoval. Chýbajúce stojany sa dajú doplniť cez aplikáciu.</p>
+    </section>
+  </div>
+</main>
+<footer><div class="wrap">Mapové dáta © prispievatelia OpenStreetMap, licencia ODbL.</div></footer>
+
+<script src="config.js"></script>
+<script>
+"use strict";
+const CFG = Object.assign({ SUPABASE_URL: "", SUPABASE_ANON_KEY: "" }, window.APP_CONFIG || {});
+const DEMAND_METERS = 30;
+const OSM_CAT = {
+  stands: "safe", racks: "safe", wide_stands: "safe", safe_loops: "safe", bollard: "safe", rack: "safe", "two-tier": "safe", anchors: "safe",
+  shed: "shelter", lockers: "shelter", building: "shelter", informal: "informal", floor: "informal",
+  wall_loops: "bad", ground_slots: "bad", handlebar_holder: "bad", crossbar: "bad",
+};
+const CAT_LABEL = { safe: "Bezpečný stojan", shelter: "Prístrešok alebo box", informal: "Neformálne miesto", bad: "Nevhodný stojan", unknown: "Neznámy typ" };
+const REASONS = { work: "Práca", shop: "Obchod alebo služby", school: "Škola", transit: "Zastávka MHD alebo vlak", office: "Úrad alebo lekár", home: "Bývam tu", leisure: "Voľný čas alebo šport", other: "Iné" };
+// do rebríčka len skutočné nedostatky; zastrešenie a osvetlenie väčšina stojanov nemá
+const CRIT = { frame: "rám sa nedá zamknúť", good_condition: "je v zlom stave" };
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const nf = new Intl.NumberFormat("sk-SK");
+const nf1 = new Intl.NumberFormat("sk-SK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+function plural(n, one, few, many) { return n === 1 ? one : n >= 2 && n <= 4 ? few : many; }
+function distM(a, b) {
+  const R = 6371000, r = Math.PI / 180, dLat = (b[0] - a[0]) * r, dLon = (b[1] - a[1]) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function inRings(lon, lat, rings) {
+  let inside = false;
+  for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+    const [xi, yi] = r[i], [xj, yj] = r[j];
+    if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+async function getJSON(url) { const r = await fetch(url, { cache: "no-cache" }); if (!r.ok) throw new Error(url + " HTTP " + r.status); return r.json(); }
+// Supabase REST: verejný kľúč len v hlavičke apikey, stránkovanie po 1000
+async function sbAll(path) {
+  if (!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY) return [];
+  const out = [];
+  for (let from = 0; ; from += 1000) {
+    const r = await fetch(`${CFG.SUPABASE_URL.replace(/\/$/, "")}/rest/v1/${path}`, { headers: { apikey: CFG.SUPABASE_ANON_KEY, Range: `${from}-${from + 999}`, "Range-Unit": "items" } });
+    if (!r.ok) throw new Error(path + " HTTP " + r.status);
+    const rows = await r.json(); out.push(...rows);
+    if (rows.length < 1000) return out;
+  }
+}
+
+const D = { racks: [], districts: [], history: { months: {} }, ratings: [], demand: [], groups: [], fetched: null, warnings: [] };
+
+function districtOf(lat, lon) { const d = D.districts.find((x) => inRings(lon, lat, x.rings)); return d ? d.id : null; }
+function districtName(id) { return (D.districts.find((d) => d.id === id) || {}).name || "Nezaradené"; }
+
+async function load() {
+  const osm = await getJSON("data/osm.json");
+  D.fetched = osm.fetched;
+  try { D.districts = (await getJSON("data/districts.json")).districts || []; } catch { D.warnings.push("Hranice mestských častí sa ešte nevytvorili, tabuľka po častiach sa doplní po najbližšej nočnej aktualizácii."); }
+  try { D.history = await getJSON("data/history.json"); } catch {}
+  D.racks = (osm.elements || []).map((e) => ({
+    id: `osm:${e.type}/${e.id}`, src: "OSM", lat: e.lat, lon: e.lon, cat: OSM_CAT[e.tags.bicycle_parking] || "unknown", osmType: e.tags.bicycle_parking || "",
+    cap: parseInt(e.tags.capacity, 10) > 0 ? parseInt(e.tags.capacity, 10) : null, covered: e.tags.covered === "yes", access: e.tags.access || "", name: e.tags.name || "",
+    d: e.d ?? null, seen: e.seen || null,
+  }));
+  try {
+    const [app, ratings, demand] = await Promise.all([
+      sbAll("racks?select=id,lat,lon,cat,capacity,covered,approved_at&status=eq.approved"),
+      sbAll("ratings?select=rack_id,stars,frame,covered,lit,good_condition"),
+      sbAll("demand?select=id,lat,lon,reason,created_at&order=created_at.asc"),
+    ]);
+    for (const r of app) D.racks.push({ id: "u:" + r.id, src: "Aplikácia", lat: r.lat, lon: r.lon, cat: r.cat, osmType: "", cap: r.capacity || null, covered: r.covered === true, access: "", name: "", d: null, approvedAt: r.approved_at });
+    D.ratings = ratings; D.demand = demand;
+  } catch (e) { console.error(e); D.warnings.push("Hodnotenia a hlasy z aplikácie sa nepodarilo načítať, zobrazujú sa len údaje z OpenStreetMap."); }
+  // schválený návrh, ktorý už je v OSM, nepočítame dvakrát
+  D.racks = D.racks.filter((r) => r.src === "OSM" || !D.racks.some((o) => o.src === "OSM" && o.seen && r.approvedAt && o.seen >= r.approvedAt.slice(0, 10) && distM([o.lat, o.lon], [r.lat, r.lon]) <= 15));
+  for (const r of D.racks) if (r.d == null && D.districts.length) r.d = districtOf(r.lat, r.lon);
+  // hodnotenia ku stojanom
+  const byRack = new Map();
+  for (const x of D.ratings) { const a = byRack.get(x.rack_id) || { n: 0, sum: 0, no: {} }; a.n++; a.sum += x.stars; for (const k of Object.keys(CRIT)) if (x[k] === false) a.no[k] = (a.no[k] || 0) + 1; byRack.set(x.rack_id, a); }
+  for (const r of D.racks) { const a = byRack.get(r.id); if (a) { r.n = a.n; r.avg = a.sum / a.n; r.no = a.no; } }
+  D.groups = groupDemand();
+}
+
+function groupDemand() {
+  const groups = [];
+  for (const d of D.demand) {
+    let g = groups.find((x) => distM([x.lat, x.lon], [d.lat, d.lon]) <= DEMAND_METERS);
+    if (!g) { g = { lat: d.lat, lon: d.lon, n: 0, reasons: {}, first: d.created_at, last: d.created_at }; groups.push(g); }
+    g.lat = (g.lat * g.n + d.lat) / (g.n + 1); g.lon = (g.lon * g.n + d.lon) / (g.n + 1);
+    g.n++; g.reasons[d.reason] = (g.reasons[d.reason] || 0) + 1; g.last = d.created_at;
+  }
+  return groups.filter((g) => !D.racks.some((r) => {
+    const after = r.src === "OSM" ? r.seen : (r.approvedAt || "").slice(0, 10);
+    return after && after >= String(g.last).slice(0, 10) && distM([r.lat, r.lon], [g.lat, g.lon]) <= DEMAND_METERS;
+  })).map((g) => ({ ...g, d: D.districts.length ? districtOf(g.lat, g.lon) : null })).sort((a, b) => b.n - a.n || String(a.first).localeCompare(String(b.first)));
+}
+
+/* ---------- súhrn ---------- */
+function renderTiles() {
+  const R = D.racks, cap = R.reduce((s, r) => s + (r.cap || 0), 0), capUnknown = R.filter((r) => !r.cap).length;
+  const bad = R.filter((r) => r.cat === "bad").length, votes = D.groups.reduce((s, g) => s + g.n, 0);
+  const tiles = [
+    { k: "Stojany", v: nf.format(R.length), s: "miest so stojanmi v meste" },
+    { k: "Miesta na bicykle", v: nf.format(cap), s: `${nf.format(capUnknown)} ${plural(capUnknown, "stojan", "stojany", "stojanov")} bez údaja o kapacite` },
+    { k: "Nevhodné stojany", v: pct(bad, R.length) + " %", s: `${nf.format(bad)} „lámačov kolies“, rám sa nedá zamknúť`, cls: "alert" },
+    { k: "Hlasy za nové stojany", v: nf.format(votes), s: `na ${nf.format(D.groups.length)} ${plural(D.groups.length, "mieste", "miestach", "miestach")}, kde stojan chýba`, cls: "demand" },
+  ];
+  $("#tiles").innerHTML = tiles.map((t) => `<div class="tile ${t.cls || ""}"><span class="k">${esc(t.k)}</span><span class="v">${esc(t.v)}</span><span class="s">${esc(t.s)}</span></div>`).join("");
+}
+
+/* ---------- mestské časti ---------- */
+let distRows = [], sortKey = "racks", sortDir = -1;
+function computeDistricts() {
+  const ids = D.districts.map((d) => d.id).concat(D.racks.some((r) => r.d == null) ? [null] : []);
+  distRows = ids.map((id) => {
+    const rs = D.racks.filter((r) => r.d === id), rated = rs.filter((r) => r.n);
+    const nRatings = rated.reduce((s, r) => s + r.n, 0), sumStars = rated.reduce((s, r) => s + r.avg * r.n, 0);
+    return {
+      id, name: districtName(id), racks: rs.length, cap: rs.reduce((s, r) => s + (r.cap || 0), 0),
+      bad: rs.filter((r) => r.cat === "bad").length, covered: rs.filter((r) => r.covered).length,
+      badPct: rs.length ? rs.filter((r) => r.cat === "bad").length / rs.length : 0, coveredPct: rs.length ? rs.filter((r) => r.covered).length / rs.length : 0,
+      votes: D.groups.filter((g) => g.d === id).reduce((s, g) => s + g.n, 0), avg: nRatings ? sumStars / nRatings : null, nRatings,
+    };
+  }).filter((r) => r.id !== null || r.racks);
+}
+function renderDistricts() {
+  const rows = distRows.slice().sort((a, b) => {
+    if (sortKey === "name") return sortDir * a.name.localeCompare(b.name, "sk");
+    const x = a[sortKey] ?? -1, y = b[sortKey] ?? -1; return sortDir * (x - y) || a.name.localeCompare(b.name, "sk");
+  });
+  $("#distTable tbody").innerHTML = rows.map((r) => `<tr>
+    <th scope="row" style="font-weight:700">${esc(r.name)}</th>
+    <td>${nf.format(r.racks)}</td><td>${nf.format(r.cap)}</td>
+    <td><span class="pct"><span>${pct(r.bad, r.racks)} %</span><i aria-hidden="true"><b style="width:${pct(r.bad, r.racks)}%"></b></i></span></td>
+    <td>${pct(r.covered, r.racks)} %</td><td>${nf.format(r.votes)}</td>
+    <td>${r.avg == null ? "–" : nf1.format(r.avg) + ` <span style="color:var(--muted)">(${r.nRatings})</span>`}</td></tr>`).join("");
+  const T = { racks: D.racks.length, cap: D.racks.reduce((s, r) => s + (r.cap || 0), 0), bad: D.racks.filter((r) => r.cat === "bad").length, covered: D.racks.filter((r) => r.covered).length, votes: D.groups.reduce((s, g) => s + g.n, 0) };
+  $("#distTable tfoot").innerHTML = `<tr><td>Bratislava spolu</td><td>${nf.format(T.racks)}</td><td>${nf.format(T.cap)}</td><td>${pct(T.bad, T.racks)} %</td><td>${pct(T.covered, T.racks)} %</td><td>${nf.format(T.votes)}</td><td></td></tr>`;
+  document.querySelectorAll("#distTable thead th").forEach((th) => {
+    if (th.dataset.k === sortKey) th.setAttribute("aria-sort", sortDir > 0 ? "ascending" : "descending"); else th.removeAttribute("aria-sort");
+  });
+  $("#distCaption").textContent = `${distRows.filter((r) => r.id !== null).length} mestských častí, zoradené podľa stĺpca „${$(`#distTable th[data-k="${sortKey}"]`).textContent.trim()}“.`;
+}
+document.querySelectorAll("#distTable thead th button").forEach((b) => b.addEventListener("click", () => {
+  const k = b.parentElement.dataset.k;
+  if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = k === "name" ? 1 : -1; }
+  renderDistricts();
+}));
+
+/* ---------- rebríčky ---------- */
+function mapLink(q) { return `index.html?${q}`; }
+function renderDemand() {
+  const top = D.groups.slice(0, 10), ul = $("#demandList");
+  if (!top.length) { ul.outerHTML = `<p class="empty" id="demandList">Zatiaľ nikto nenahlásil miesto, kde chýba stojan. Hlásiť sa dá v aplikácii cez tlačidlo Pridať.</p>`; return; }
+  ul.innerHTML = top.map((g) => {
+    const reasons = Object.entries(g.reasons).sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k, c]) => `${REASONS[k] || k} (${c})`).join(", ");
+    return `<li><span class="t">${esc(g.d != null ? districtName(g.d) : "Bratislava")}</span><span class="n">${g.n}<small>${plural(g.n, "hlas", "hlasy", "hlasov")}</small></span>
+      <span class="m">${esc(reasons)} · <a href="${mapLink(`at=${g.lat.toFixed(5)},${g.lon.toFixed(5)}`)}">ukázať na mape</a></span></li>`;
+  }).join("");
+  const all = {}; for (const g of D.groups) for (const [k, c] of Object.entries(g.reasons)) all[k] = (all[k] || 0) + c;
+  const total = Object.values(all).reduce((a, b) => a + b, 0);
+  $("#reasonNote").textContent = "Dôvody spolu: " + Object.entries(all).sort((a, b) => b[1] - a[1]).map(([k, c]) => `${REASONS[k] || k} ${pct(c, total)} %`).join(", ") + ".";
+}
+function renderWorst() {
+  const rated = D.racks.filter((r) => r.n), ul = $("#worstList");
+  const nr = rated.reduce((s, r) => s + r.n, 0);
+  $("#qualLead").textContent = rated.length
+    ? `Hodnotenia od používateľov aplikácie, 1 až 5 hviezdičiek. Spolu ${nf.format(nr)} ${plural(nr, "hodnotenie", "hodnotenia", "hodnotení")} pri ${nf.format(rated.length)} ${plural(rated.length, "stojane", "stojanoch", "stojanoch")}, priemer ${nf1.format(rated.reduce((s, r) => s + r.avg * r.n, 0) / nr)}.`
+    : "Hodnotenia od používateľov aplikácie, 1 až 5 hviezdičiek.";
+  const worst = rated.sort((a, b) => a.avg - b.avg || b.n - a.n).slice(0, 10);
+  if (!worst.length) { ul.outerHTML = `<p class="empty" id="worstList">Zatiaľ žiadne hodnotenia. Hodnotiť sa dá v aplikácii pri každom stojane.</p>`; return; }
+  ul.innerHTML = worst.map((r) => {
+    const probs = Object.entries(r.no || {}).filter(([, c]) => c * 2 >= r.n).map(([k]) => CRIT[k]);
+    return `<li><span class="t">${esc(r.name || CAT_LABEL[r.cat])} · ${esc(districtName(r.d))}</span><span class="n">${nf1.format(r.avg)}<small>z 5 (${r.n})</small></span>
+      <span class="m">${esc(probs.length ? "Podľa hodnotení " + probs.join(", ") : CAT_LABEL[r.cat])} · <a href="${mapLink(`rack=${encodeURIComponent(r.id)}`)}">detail na mape</a></span></li>`;
+  }).join("");
+}
+
+/* ---------- vývoj ---------- */
+function monthSeries() {
+  const months = new Set(Object.keys(D.history.months || {}));
+  for (const d of D.demand) months.add(String(d.created_at).slice(0, 7));
+  const list = [...months].filter(Boolean).sort();
+  let cum = 0; const votesBy = {};
+  for (const d of D.demand) { const m = String(d.created_at).slice(0, 7); votesBy[m] = (votesBy[m] || 0) + 1; }
+  return list.map((m) => { cum += votesBy[m] || 0; const h = (D.history.months || {})[m] || {}; return { m, racks: h.racks ?? null, cap: h.capacity ?? null, bad: h.bad ?? null, votes: cum }; });
+}
+const MONTHS_SK = ["jan", "feb", "mar", "apr", "máj", "jún", "júl", "aug", "sep", "okt", "nov", "dec"];
+function mLabel(m) { const [y, mo] = m.split("-"); return `${MONTHS_SK[+mo - 1]} ${y.slice(2)}`; }
+function lineChart(fig, series, key, color, unit) {
+  const pts = series.filter((s) => s[key] != null);
+  const W = 520, H = 200, L = 44, Rr = 40, T = 14, B = 28;
+  if (!pts.length) { fig.insertAdjacentHTML("beforeend", `<p class="note">Zatiaľ bez údajov.</p>`); return; }
+  const max = Math.max(...pts.map((p) => p[key])), min = 0;
+  const step = niceStep(max), top = Math.max(step, Math.ceil(max / step) * step);
+  const x = (i) => (pts.length === 1 ? L + (W - L - Rr) / 2 : L + (i * (W - L - Rr)) / (pts.length - 1));
+  const y = (v) => T + (H - T - B) * (1 - (v - min) / (top - min));
+  let g = "";
+  for (let v = 0; v <= top; v += step) g += `<line class="grid" x1="${L}" x2="${W - Rr}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L - 8}" y="${y(v) + 4}" text-anchor="end">${nf.format(v)}</text>`;
+  const every = Math.ceil(pts.length / 6);
+  pts.forEach((p, i) => { if (i % every === 0 || i === pts.length - 1) g += `<text class="axis" x="${x(i)}" y="${H - 8}" text-anchor="middle">${mLabel(p.m)}</text>`; });
+  const path = pts.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p[key])}`).join("");
+  if (pts.length > 1) g += `<path class="area" fill="${color}" d="${path}L${x(pts.length - 1)},${y(0)}L${x(0)},${y(0)}Z"/><path class="line" stroke="${color}" d="${path}"/>`;
+  const last = pts[pts.length - 1];
+  g += `<circle class="dot" cx="${x(pts.length - 1)}" cy="${y(last[key])}" r="5" fill="${color}"/><text class="endlabel" x="${x(pts.length - 1) + 8}" y="${y(last[key]) + 4}">${nf.format(last[key])}</text>`;
+  pts.forEach((p, i) => { g += `<rect class="hit" x="${x(i) - 18}" y="${T}" width="36" height="${H - T - B}" data-i="${i}" tabindex="0" aria-label="${esc(mLabel(p.m))}: ${nf.format(p[key])} ${esc(unit)}"/>`; });
+  fig.insertAdjacentHTML("beforeend", `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(fig.querySelector("figcaption").textContent)}: posledná hodnota ${nf.format(last[key])} ${esc(unit)}">${g}</svg>`);
+  if (pts.length === 1) fig.insertAdjacentHTML("beforeend", `<p class="note">Zatiaľ jeden mesiac údajov.</p>`);
+  const tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; fig.appendChild(tip);
+  const svg = fig.querySelector("svg");
+  const show = (el) => {
+    const p = pts[+el.dataset.i], r = svg.getBoundingClientRect(), f = fig.getBoundingClientRect(), k = r.width / W;
+    tip.textContent = `${mLabel(p.m)}: ${nf.format(p[key])} ${unit}`; tip.hidden = false;
+    tip.style.left = (r.left - f.left + x(+el.dataset.i) * k) + "px"; tip.style.top = (r.top - f.top + y(p[key]) * k) + "px";
+  };
+  svg.querySelectorAll(".hit").forEach((el) => {
+    el.addEventListener("pointerenter", () => show(el)); el.addEventListener("focus", () => show(el));
+    el.addEventListener("pointerleave", () => (tip.hidden = true)); el.addEventListener("blur", () => (tip.hidden = true));
+  });
+}
+function niceStep(max) { const raw = Math.max(1, max) / 4, p = 10 ** Math.floor(Math.log10(raw)), n = raw / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+function renderTrend() {
+  const s = monthSeries(), css = getComputedStyle(document.documentElement);
+  lineChart($("#chartRacks"), s, "racks", css.getPropertyValue("--accent").trim(), "stojanov");
+  lineChart($("#chartVotes"), s, "votes", css.getPropertyValue("--c-demand").trim(), "hlasov");
+  $("#trendTable tbody").innerHTML = s.map((p) => `<tr><th scope="row">${esc(mLabel(p.m))}</th><td>${p.racks == null ? "–" : nf.format(p.racks)}</td><td>${p.cap == null ? "–" : nf.format(p.cap)}</td><td>${p.bad == null ? "–" : nf.format(p.bad)}</td><td>${nf.format(p.votes)}</td></tr>`).join("");
+}
+
+/* ---------- stiahnutie ---------- */
+function csv(rows) { return "﻿" + rows.map((r) => r.map((v) => { const t = v == null ? "" : String(v); return /[;"\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; }).join(";")).join("\r\n"); }
+function save(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+const LICENSE = "© prispievatelia OpenStreetMap a používatelia aplikácie Cyklostojany Bratislava, ODbL";
+function download(kind) {
+  const day = (D.fetched || new Date().toISOString()).slice(0, 10);
+  if (kind === "racks-csv") save(`cyklostojany-bratislava-${day}.csv`, csv([["zdroj", "id", "mestska_cast", "kategoria", "typ_osm", "kapacita", "zastreseny", "pristup", "nazov", "lat", "lon", "hodnotenie", "pocet_hodnoteni"],
+    ...D.racks.map((r) => [r.src, r.id, districtName(r.d), CAT_LABEL[r.cat], r.osmType, r.cap, r.covered ? "áno" : "", r.access, r.name, r.lat, r.lon, r.avg != null ? r.avg.toFixed(2) : "", r.n || ""])]), "text/csv;charset=utf-8");
+  if (kind === "racks-geojson") save(`cyklostojany-bratislava-${day}.geojson`, JSON.stringify({ type: "FeatureCollection", license: LICENSE,
+    features: D.racks.map((r) => ({ type: "Feature", geometry: { type: "Point", coordinates: [r.lon, r.lat] }, properties: { source: r.src, id: r.id, district: districtName(r.d), category: r.cat, osm_type: r.osmType || null, capacity: r.cap, covered: r.covered, rating: r.avg ?? null, ratings: r.n || 0 } })) }), "application/geo+json");
+  if (kind === "demand-csv") save(`chyba-stojan-bratislava-${day}.csv`, csv([["mestska_cast", "hlasy", ...Object.keys(REASONS).map((k) => "dovod_" + k), "prve_hlasenie", "posledne_hlasenie", "lat", "lon"],
+    ...D.groups.map((g) => [districtName(g.d), g.n, ...Object.keys(REASONS).map((k) => g.reasons[k] || 0), String(g.first).slice(0, 10), String(g.last).slice(0, 10), g.lat.toFixed(6), g.lon.toFixed(6)])]), "text/csv;charset=utf-8");
+  if (kind === "demand-geojson") save(`chyba-stojan-bratislava-${day}.geojson`, JSON.stringify({ type: "FeatureCollection", license: LICENSE,
+    features: D.groups.map((g) => ({ type: "Feature", geometry: { type: "Point", coordinates: [+g.lon.toFixed(6), +g.lat.toFixed(6)] }, properties: { district: districtName(g.d), votes: g.n, reasons: g.reasons, first: g.first, last: g.last } })) }), "application/geo+json");
+  if (kind === "districts-csv") save(`mestske-casti-cyklostojany-${day}.csv`, csv([["mestska_cast", "stojany", "miesta", "nevhodne", "nevhodne_percent", "zastresene", "hlasy_za_nove", "priemerne_hodnotenie", "pocet_hodnoteni"],
+    ...distRows.map((r) => [r.name, r.racks, r.cap, r.bad, pct(r.bad, r.racks), r.covered, r.votes, r.avg != null ? r.avg.toFixed(2) : "", r.nRatings])]), "text/csv;charset=utf-8");
+}
+document.querySelectorAll("[data-dl]").forEach((b) => b.addEventListener("click", () => download(b.dataset.dl)));
+$("#btnPrint").addEventListener("click", () => window.print());
+
+/* ---------- štart ---------- */
+(async () => {
+  try { await load(); }
+  catch (e) { console.error(e); $("#asOf").textContent = "Údaje sa nepodarilo načítať. Skús obnoviť stránku."; return; }
+  const t = D.fetched ? new Date(D.fetched).toLocaleString("sk-SK", { day: "numeric", month: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  $("#asOf").textContent = `Stav údajov k ${t}. Aktualizuje sa každú noc.`;
+  if (D.warnings.length) { const s = $("#loadStatus"); s.textContent = D.warnings.join(" "); s.hidden = false; }
+  renderTiles(); computeDistricts(); renderDistricts(); renderDemand(); renderWorst(); renderTrend();
+})();
+</script>
+</body>
+</html>

@@ -537,6 +537,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
     <p class="lead">Prerušovaný okraj značky znamená, že stojan čaká na schválenie správcom.</p>
     <h3 class="section-title">Dáta</h3>
     <p class="lead" id="infoData"></p>
+    <a class="btn" href="prehlad.html">Prehľad pre mesto a mestské časti</a>
     <button class="btn" type="button" id="btnRefresh">Znova načítať stojany z OpenStreetMap</button>
     <h3 class="section-title">Správca</h3>
     <div id="adminBox"></div>
@@ -551,6 +552,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="config.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
@@ -562,8 +564,8 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
    Po vyplnení sa nové stojany, fotky a hodnotenia zdieľajú medzi všetkými.
    ========================================================================= */
 const CONFIG = {
-  SUPABASE_URL: "https://poyahnqixjxmjdvgsafm.supabase.co",
-  SUPABASE_ANON_KEY: "sb_publishable_wS364PdWtS6nEGT17z5tTQ_4uzsjkln",   // verejný kľúč (publishable/anon), nikdy nie secret/service_role
+  SUPABASE_URL: (window.APP_CONFIG || {}).SUPABASE_URL || "",          // nastavuje sa v config.js
+  SUPABASE_ANON_KEY: (window.APP_CONFIG || {}).SUPABASE_ANON_KEY || "",
   CENTER: [48.1486, 17.1077],
   BBOX: [48.0, 16.95, 48.27, 17.34], // juh, západ, sever, východ – záloha a kontrola pri pridávaní
   DATA_URL: "data/osm.json",   // stojany stiahnuté každú noc (GitHub Actions)
@@ -1628,8 +1630,18 @@ $("#btnRefresh").addEventListener("click", () => { $("#dlgInfo").close(); loadOS
   }
   await loadUserData();
   render();
-  loadOSM();
+  await loadOSM();
+  openFromUrl();
 })();
+
+// Odkazy z prehľadu: index.html?at=48.14,17.11 (miesto) alebo ?rack=osm:node/123 (detail stojana)
+function openFromUrl() {
+  const q = new URLSearchParams(location.search);
+  const at = (q.get("at") || "").split(",").map(Number);
+  if (at.length === 2 && at.every(Number.isFinite) && inBBox(at[0], at[1])) map.setView(at, 18);
+  const id = q.get("rack");
+  if (id) { const r = findRack(id); if (r) { map.setView([r.lat, r.lon], 18); openDetail(r.id); } }
+}
 </script>
 </body>
 </html>
