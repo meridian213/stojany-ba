@@ -1,4 +1,4 @@
--- Stojany BA – databáza pre zdieľané stojany, hodnotenia a fotky (Supabase / PostgreSQL)
+-- Cyklostojany Bratislava – databáza pre zdieľané stojany, hodnotenia a fotky (Supabase / PostgreSQL)
 -- Spusti celé v Supabase: SQL Editor -> New query -> Run.
 -- Stojany z OpenStreetMap sa sem neukladajú, aplikácia ich číta priamo z OSM.
 

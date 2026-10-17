@@ -1,4 +1,4 @@
-# Stojany BA
+# Cyklostojany Bratislava
 
 Mobilná mapa cyklostojanov v Bratislave. Stojany sa každú noc automaticky sťahujú z OpenStreetMap, používatelia ich môžu hodnotiť a navrhovať nové, ktoré schvaľuje správca.
 

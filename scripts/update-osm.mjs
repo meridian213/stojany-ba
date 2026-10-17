@@ -25,7 +25,7 @@ async function overpass(query) {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "stojany-ba (GitHub Actions)" },
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "cyklostojany-bratislava (GitHub Actions)" },
         body: "data=" + encodeURIComponent(query),
         signal: AbortSignal.timeout(180_000),
       });

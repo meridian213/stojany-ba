@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1d5bd8">
-<title>Stojany BA</title>
+<title>Cyklostojany Bratislava</title>
 <meta name="description" content="Mapa cyklostojanov v Bratislave. Nájdi najbližší bezpečný stojan, ohodnoť ho alebo navrhni nový.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -82,7 +82,7 @@ a { color: var(--accent); }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
 .brand-mark { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
 .brand-mark svg { width: 22px; height: 22px; }
-.brand h1 { font: 800 1.25rem/1 var(--f-display); letter-spacing: -.01em; margin: 0; padding-top: 3px; }
+.brand h1 { font: 800 1.2rem/1.05 var(--f-display); letter-spacing: -.01em; margin: 0; padding-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand p { margin: 2px 0 0; font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand > div { min-width: 0; }
 .icon-btn {
@@ -318,7 +318,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2.5"/></svg>
     </div>
     <div>
-      <h1>Stojany BA</h1>
+      <h1>Cyklostojany Bratislava</h1>
       <p id="dataInfo">Načítavam stojany…</p>
     </div>
   </div>
@@ -1325,14 +1325,14 @@ function renderAdminBox() {
 const OSM_TYPE_TAG = { safe: "bicycle_parking=stands (stojan typu U/A)", shelter: "bicycle_parking=shed alebo lockers", informal: "bicycle_parking=informal", bad: "bicycle_parking=wall_loops (lámač kolies)" };
 function toReport() { return state.user.filter((r) => r.status === "approved" && r.osmConsent && !r.osmNoteId && !isNowInOsm(r)); }
 async function noteText(r) {
-  const lines = ["Nový stojan na bicykle, nahlásený cez aplikáciu Stojany BA a overený správcom.", ""];
+  const lines = ["Nový stojan na bicykle, nahlásený cez aplikáciu Cyklostojany Bratislava a overený správcom.", ""];
   lines.push(`Typ: ${CATS[r.cat].label}` + (OSM_TYPE_TAG[r.cat] ? ` → ${OSM_TYPE_TAG[r.cat]}` : ""));
   if (r.capacity) lines.push(`Počet miest: ${r.capacity} → capacity=${r.capacity}`);
   if (r.covered != null) lines.push(`Zastrešený: ${r.covered ? "áno → covered=yes" : "nie → covered=no"}`);
   if (r.note) lines.push(`Poznámka navrhovateľa: ${r.note}`);
   const photo = await state.store.photoURL(r).catch(() => null);
   if (photo && /^https:/.test(photo)) lines.push(`Fotka: ${photo}`);
-  lines.push("", "#StojanyBA");
+  lines.push("", "#CyklostojanyBratislava");
   return lines.join("\n");
 }
 async function createOsmNote(lat, lon, text) {
