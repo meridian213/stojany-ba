@@ -1,0 +1,68 @@
+# Každú noc stiahne aktuálne stojany z OpenStreetMap a zverejní stránku na GitHub Pages.
+# Spúšťa sa aj po každej zmene v repozitári a dá sa spustiť ručne (Actions → Spustiť → Run workflow).
+name: Aktualizácia a zverejnenie
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 2 * * *"   # každý deň o 2:17 UTC (4:17 v lete, 3:17 v zime v Bratislave)
+  workflow_dispatch:
+
+permissions:
+  contents: write      # uloženie aktualizovaných dát späť do repozitára
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Stiahnuť aktuálne stojany z OSM
+        id: osm
+        continue-on-error: true   # pri výpadku OSM sa zverejnia posledné dobré dáta
+        run: node scripts/update-osm.mjs
+
+      - name: Upozornenie na neaktuálne dáta
+        if: steps.osm.outcome == 'failure'
+        run: echo "::warning::Stojany z OSM sa nepodarilo stiahnuť, zverejňujem posledné uložené dáta."
+
+      - name: Uložiť dáta do repozitára
+        if: steps.osm.outcome == 'success'
+        run: |
+          if git diff --quiet -- site/data/osm.json; then
+            echo "Žiadne zmeny v stojanoch."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site/data/osm.json
+            git commit -m "Aktualizácia stojanov z OSM"
+            git push
+          fi
+
+      - name: Udržať Supabase aktívny
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        continue-on-error: true   # chyba tu nesmie zastaviť zverejnenie stránky
+        run: node scripts/keep-alive.mjs
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
