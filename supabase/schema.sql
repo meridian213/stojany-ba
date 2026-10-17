@@ -20,7 +20,8 @@ create table if not exists public.racks (
   note        text check (char_length(note) <= 300),
   photo_path  text check (photo_path is null or photo_path ~ '^racks/[0-9a-f-]{36}\.jpg$'),
   status      text not null default 'pending' check (status in ('pending','approved','rejected')),
-  created_at  timestamptz not null default now()
+  created_at  timestamptz not null default now(),
+  approved_at timestamptz   -- nastavuje trigger pri schválení
 );
 
 -- Hodnotenia (pre stojany z OSM aj pre navrhnuté). Jedno hodnotenie na stojan a zariadenie.
@@ -48,6 +49,27 @@ language sql stable security definer set search_path = '' as $$
 $$;
 revoke execute on function private.is_admin() from public;
 grant execute on function private.is_admin() to anon, authenticated;
+
+-- Dátum schválenia nastavuje databáza sama (pre údaj „pribudlo za týždeň“)
+create or replace function private.set_approved_at() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if new.status = 'approved' then
+    if tg_op = 'INSERT' or old.status is distinct from 'approved' then
+      new.approved_at := now();
+    else
+      new.approved_at := old.approved_at;
+    end if;
+  else
+    new.approved_at := null;
+  end if;
+  return new;
+end;
+$$;
+drop trigger if exists racks_approved_at on public.racks;
+create trigger racks_approved_at
+  before insert or update on public.racks
+  for each row execute function private.set_approved_at();
 
 alter table public.admins  enable row level security;
 alter table public.racks   enable row level security;

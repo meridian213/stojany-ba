@@ -8,10 +8,11 @@ Mobilná mapa cyklostojanov v Bratislave. Stojany sa každú noc automaticky sť
 |---|---|
 | `site/index.html` | Celá aplikácia (HTML, CSS, JavaScript v jednom súbore). |
 | `site/data/osm.json` | Stojany z OSM. Prepisuje ho nočná aktualizácia. |
-| `scripts/update-osm.mjs` | Stiahne stojany z Overpass API. Pri chybe alebo podozrivo malom počte súbor neprepíše. |
+| `scripts/update-osm.mjs` | Stiahne stojany z Overpass API a zaznamená, ktoré pribudli a ktoré zmizli. Pri chybe, podozrivo malom počte alebo hromadnom zmiznutí stojanov súbor neprepíše. |
 | `scripts/keep-alive.mjs` | Každú noc pošle do Supabase malý dotaz, aby sa projekt nepozastavil. |
 | `.github/workflows/deploy.yml` | Každú noc o 2:17 UTC stiahne dáta a zverejní stránku. Beží aj po každej zmene a dá sa spustiť ručne. |
 | `supabase/schema.sql` | Databáza pre hodnotenia, návrhy a fotky vrátane prístupových pravidiel. |
+| `supabase/migrations/` | Zmeny pre už existujúcu databázu. Spúšťajú sa ručne v SQL Editore v poradí podľa čísla. |
 
 ## Zverejnenie na GitHub Pages
 

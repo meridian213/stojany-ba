@@ -646,7 +646,8 @@ class LocalStore {
     await kv.set("ratings", this.ratings);
   }
   async setRackStatus(id, status) {
-    const r = this.racks.find((x) => x.id === id); if (r) r.status = status;
+    const r = this.racks.find((x) => x.id === id);
+    if (r) { r.status = status; r.approvedAt = status === "approved" ? new Date().toISOString() : null; }
     await kv.set("userRacks", this.racks);
   }
 }
@@ -666,7 +667,7 @@ class SupabaseStore {
   isAdmin() { return this.admin; }
   fromRow(r) {
     return { id: "u:" + r.id, dbId: r.id, source: "user", lat: r.lat, lon: r.lon, cat: r.cat, capacity: r.capacity, covered: r.covered,
-      note: r.note, photo: r.photo_path, status: r.status, createdAt: r.created_at };
+      note: r.note, photo: r.photo_path, status: r.status, createdAt: r.created_at, approvedAt: r.approved_at || null };
   }
   async listUserRacks() {
     const { data, error } = await this.sb.from("racks").select("*");
@@ -725,6 +726,7 @@ class SupabaseStore {
 const state = {
   store: null,
   osm: [], osmTime: null,
+  removed: [], trackingSince: null,   // zmiznuté stojany z OSM a začiatok sledovania zmien
   user: [],
   ratings: [],
   agg: new Map(),
@@ -780,6 +782,7 @@ function osmToRack(el) {
     name: t.name || null,
     note: t.description || null,
     operator: t.operator || null,
+    seen: el.seen || null,   // deň, keď sa stojan prvýkrát objavil v našich dátach (null = pred začiatkom sledovania)
     osmUrl: `https://www.openstreetmap.org/${el.type}/${el.id}`,
     status: "approved",
   };
@@ -816,6 +819,8 @@ async function loadFromFile() {
   const racks = (data.elements || []).map(osmToRack).filter(Boolean);
   if (!racks.length) throw new Error("Prázdny súbor");
   state.osm = racks; state.osmTime = Date.parse(data.fetched) || Date.now();
+  state.removed = Array.isArray(data.removed) ? data.removed : [];
+  state.trackingSince = data.tracking_since || null;
   kv.set("osmCache", { t: state.osmTime, racks });
   hideStatus(); render();
 }
@@ -907,6 +912,29 @@ function rackTitle(r) {
   return parts.join(", ");
 }
 
+/* ---------- zmena počtu za posledný týždeň ---------- */
+function weeklyChange() {
+  const from = new Date(Date.now() - 7 * 864e5);
+  const fromDay = from.toISOString().slice(0, 10);
+  const osmAdded = state.osm.filter((r) => r.seen && r.seen >= fromDay).length;
+  const appAdded = state.user.filter((r) => r.status === "approved" && r.approvedAt && new Date(r.approvedAt) >= from).length;
+  const removed = state.removed.filter((x) => x.date >= fromDay).length;
+  return { added: osmAdded + appAdded, removed };
+}
+function renderHeader(total, shown) {
+  const el = $("#dataInfo");
+  if (!total) { el.textContent = "Načítavam stojany…"; return; }
+  if (shown !== total) { el.textContent = `Zobrazených ${shown} z ${total} stojanov`; return; }
+  el.textContent = `${total} ${plural(total, "stojan", "stojany", "stojanov")}`;
+  if (!state.trackingSince) return;   // zmeny ešte nesledujeme
+  const { added, removed } = weeklyChange();
+  const vis = document.createElement("span"); vis.setAttribute("aria-hidden", "true");
+  vis.textContent = ` · +${added} / −${removed} za týždeň`;
+  const sr = document.createElement("span"); sr.className = "sr-only";
+  sr.textContent = `, za posledný týždeň ${plural(added, "pribudol", "pribudli", "pribudlo")} ${added}, ${plural(removed, "ubudol", "ubudli", "ubudlo")} ${removed}`;
+  el.append(vis, sr);
+}
+
 function render() {
   const racks = filteredRacks();
   const markers = [];
@@ -935,8 +963,9 @@ function render() {
   const total = allRacks().length;
   const shown = racks.length;
   const t = state.osmTime ? new Date(state.osmTime).toLocaleString("sk-SK", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
-  $("#dataInfo").textContent = total ? (shown === total ? `${total} ${plural(total, "stojan", "stojany", "stojanov")}` : `Zobrazených ${shown} z ${total} stojanov`) : "Načítavam stojany…";
-  $("#infoData").textContent = `Stojany pochádzajú z OpenStreetMap${t ? ` (stav k ${t})` : ""}. Hodnotenia a nové stojany sú ${state.store?.mode === "supabase" ? "zdieľané medzi všetkými používateľmi" : "zatiaľ uložené len v tomto zariadení (demo režim)"}.`;
+  renderHeader(total, shown);
+  const since = state.trackingSince ? new Date(state.trackingSince).toLocaleDateString("sk-SK") : null;
+  $("#infoData").textContent = `Stojany pochádzajú z OpenStreetMap${t ? ` (stav k ${t})` : ""}.${since ? ` Zmeny v počte stojanov sledujeme od ${since}.` : ""} Hodnotenia a nové stojany sú ${state.store?.mode === "supabase" ? "zdieľané medzi všetkými používateľmi" : "zatiaľ uložené len v tomto zariadení (demo režim)"}.`;
   const nOff = (CAT_ORDER.length - state.filter.cats.length) + (state.filter.minStars ? 1 : 0) + (state.filter.covered ? 1 : 0) + (state.filter.publicOnly ? 1 : 0);
   const badge = $("#filterBadge"); badge.hidden = !nOff; badge.textContent = nOff;
   $("#btnFilter").setAttribute("aria-label", nOff ? `Filter, ${nOff} aktívne` : "Filter");
