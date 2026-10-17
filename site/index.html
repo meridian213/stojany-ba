@@ -448,6 +448,10 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <p class="hint" id="noteHint">Napr. „za vchodom do knižnice“. Najviac 300 znakov.</p>
       <textarea id="addNote" maxlength="300" aria-describedby="noteHint"></textarea>
     </div>
+    <label class="switch" for="addOsmConsent">
+      <span>Súhlasím, aby sa údaje a fotka použili na doplnenie stojana do OpenStreetMap (licencia ODbL).</span>
+      <input type="checkbox" id="addOsmConsent">
+    </label>
     <p class="notice" id="addError" role="alert" hidden></p>
     <button class="btn primary block" type="submit" id="addSubmit">Odoslať na schválenie</button>
   </form>
@@ -484,7 +488,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
 
 <!-- Admin: čakajúce stojany -->
 <dialog class="sheet" id="dlgAdmin" aria-labelledby="adminTitle">
-  <div class="sheet-head"><h2 id="adminTitle">Na schválenie</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-head"><h2 id="adminTitle">Správa návrhov</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
   <div class="sheet-body" id="adminList"></div>
 </dialog>
 
@@ -645,6 +649,10 @@ class LocalStore {
     this.ratings.push({ ...r, deviceId: DEVICE_ID, createdAt: new Date().toISOString() });
     await kv.set("ratings", this.ratings);
   }
+  async setOsmNote(rack, noteId) {
+    const r = this.racks.find((x) => x.id === rack.id); if (r) r.osmNoteId = noteId;
+    await kv.set("userRacks", this.racks);
+  }
   async setRackStatus(id, status) {
     const r = this.racks.find((x) => x.id === id);
     if (r) { r.status = status; r.approvedAt = status === "approved" ? new Date().toISOString() : null; }
@@ -667,7 +675,8 @@ class SupabaseStore {
   isAdmin() { return this.admin; }
   fromRow(r) {
     return { id: "u:" + r.id, dbId: r.id, source: "user", lat: r.lat, lon: r.lon, cat: r.cat, capacity: r.capacity, covered: r.covered,
-      note: r.note, photo: r.photo_path, status: r.status, createdAt: r.created_at, approvedAt: r.approved_at || null };
+      note: r.note, photo: r.photo_path, status: r.status, createdAt: r.created_at, approvedAt: r.approved_at || null,
+      osmConsent: !!r.osm_consent, osmNoteId: r.osm_note_id || null };
   }
   async listUserRacks() {
     const { data, error } = await this.sb.from("racks").select("*");
@@ -687,7 +696,7 @@ class SupabaseStore {
       const { error } = await this.sb.storage.from("photos").upload(path, photo, { contentType: "image/jpeg", upsert: false });
       if (error) throw error;
     }
-    const row = { id: dbId, lat: data.lat, lon: data.lon, cat: data.cat, capacity: data.capacity, covered: data.covered, note: data.note || null, photo_path: path };
+    const row = { id: dbId, lat: data.lat, lon: data.lon, cat: data.cat, capacity: data.capacity, covered: data.covered, note: data.note || null, photo_path: path, osm_consent: !!data.osmConsent };
     const { error } = await this.sb.from("racks").insert(row);
     if (error) throw error;
     const rack = this.fromRow({ ...row, status: "pending", created_at: new Date().toISOString() });
@@ -711,6 +720,10 @@ class SupabaseStore {
   async setRackStatus(id, status) {
     const dbId = id.replace(/^u:/, "");
     const { error } = await this.sb.from("racks").update({ status }).eq("id", dbId);
+    if (error) throw error;
+  }
+  async setOsmNote(rack, noteId) {
+    const { error } = await this.sb.from("racks").update({ osm_note_id: noteId }).eq("id", rack.dbId);
     if (error) throw error;
   }
   async signIn(email) {
@@ -887,7 +900,14 @@ function visibleUserRacks() {
   const admin = state.store?.isAdmin();
   return state.user.filter((r) => r.status === "approved" || (admin && r.status === "pending") || (r.mine && r.status === "pending"));
 }
-function allRacks() { return state.osm.concat(visibleUserRacks()); }
+// Schválený návrh z aplikácie sa skryje, keď sa po schválení v jeho blízkosti objaví stojan v OSM
+// (niekto ho podľa poznámky zapísal). Nočná aktualizácia ho potom ukazuje z OSM.
+function isNowInOsm(r) {
+  if (r.status !== "approved" || !r.approvedAt) return false;
+  const since = r.approvedAt.slice(0, 10);
+  return state.osm.some((o) => o.seen && o.seen >= since && distM([o.lat, o.lon], [r.lat, r.lon]) <= CONFIG.DUPLICATE_METERS);
+}
+function allRacks() { return state.osm.concat(visibleUserRacks().filter((r) => !isNowInOsm(r))); }
 
 function passes(r) {
   const f = state.filter;
@@ -1055,6 +1075,7 @@ async function openDetail(id) {
   else if (a && a.mine) h += `<p class="notice ok">Tento stojan si už hodnotil. Ďakujeme!</p>`;
   else h += `<button class="btn primary block" type="button" id="btnRate">Ohodnotiť tento stojan</button>`;
 
+  if (r.osmNoteId) h += `<div class="links"><a href="https://www.openstreetmap.org/note/${encodeURIComponent(r.osmNoteId)}" target="_blank" rel="noopener">Poznámka v OpenStreetMap</a></div>`;
   if (r.osmUrl) h += `<div class="links"><a href="${r.osmUrl}" target="_blank" rel="noopener">Zobraziť alebo opraviť v OpenStreetMap</a></div>`;
   body.innerHTML = h;
   const rb = $("#btnRate", body); if (rb) rb.onclick = () => openRate(r.id);
@@ -1256,7 +1277,7 @@ $("#addForm").addEventListener("submit", async (e) => {
   const cap = parseInt($("#addCapacity").value, 10);
   if ($("#addCapacity").value && (!Number.isFinite(cap) || cap < 1 || cap > 500)) { err.textContent = "Počet miest musí byť číslo od 1 do 500."; err.hidden = false; $("#addCapacity").focus(); return; }
   const cov = fd.get("addCovered");
-  const data = { lat: addPoint[0], lon: addPoint[1], cat, capacity: Number.isFinite(cap) ? cap : null, covered: cov === "yes" ? true : cov === "no" ? false : null, note: $("#addNote").value.trim().slice(0, 300) };
+  const data = { lat: addPoint[0], lon: addPoint[1], cat, capacity: Number.isFinite(cap) ? cap : null, covered: cov === "yes" ? true : cov === "no" ? false : null, note: $("#addNote").value.trim().slice(0, 300), osmConsent: $("#addOsmConsent").checked };
   const btn = $("#addSubmit"); btn.disabled = true; btn.textContent = "Odosielam…";
   try {
     const rack = await state.store.addRack(data, addPhotoBlob);
@@ -1276,14 +1297,14 @@ function buildLegend() {
 }
 function renderAdminBox() {
   const box = $("#adminBox"); const st = state.store;
-  const pendingN = state.user.filter((r) => r.status === "pending").length;
+  const pendingN = state.user.filter((r) => r.status === "pending").length + toReport().length;
   if (st.mode === "local") {
     box.innerHTML = `<label class="switch" for="adminDemo"><span>Režim správcu <span class="demo-tag">demo, len v tomto zariadení</span></span><input type="checkbox" id="adminDemo" ${st.isAdmin() ? "checked" : ""}></label>
-      ${st.isAdmin() ? `<button class="btn block" type="button" id="btnAdminList">Stojany na schválenie (${pendingN})</button>` : ""}`;
+      ${st.isAdmin() ? `<button class="btn block" type="button" id="btnAdminList">Na schválenie a nahlásenie (${pendingN})</button>` : ""}`;
     $("#adminDemo").onchange = (e) => { prefs.set("adminDemo", e.target.checked); render(); renderAdminBox(); };
   } else if (st.isAdmin()) {
     box.innerHTML = `<p class="lead">Prihlásený ako správca: ${esc(st.session.user.email)}</p>
-      <button class="btn block primary" type="button" id="btnAdminList">Stojany na schválenie (${pendingN})</button>
+      <button class="btn block primary" type="button" id="btnAdminList">Na schválenie a nahlásenie (${pendingN})</button>
       <button class="btn block" type="button" id="btnSignOut">Odhlásiť sa</button>`;
     $("#btnSignOut").onclick = () => st.signOut();
   } else {
@@ -1301,16 +1322,47 @@ function renderAdminBox() {
   }
   const b = $("#btnAdminList"); if (b) b.onclick = openAdmin;
 }
+/* ---------- nahlásenie do OpenStreetMap ako poznámka ---------- */
+// Poznámka v OSM je správa pre miestnych mapovačov. Posiela ju správca ručne pri každom stojane,
+// nie automaticky (pravidlá OSM: žiadne automatické poznámky).
+const OSM_TYPE_TAG = { safe: "bicycle_parking=stands (stojan typu U/A)", shelter: "bicycle_parking=shed alebo lockers", informal: "bicycle_parking=informal", bad: "bicycle_parking=wall_loops (lámač kolies)" };
+function toReport() { return state.user.filter((r) => r.status === "approved" && r.osmConsent && !r.osmNoteId && !isNowInOsm(r)); }
+async function noteText(r) {
+  const lines = ["Nový stojan na bicykle, nahlásený cez aplikáciu Stojany BA a overený správcom.", ""];
+  lines.push(`Typ: ${CATS[r.cat].label}` + (OSM_TYPE_TAG[r.cat] ? ` → ${OSM_TYPE_TAG[r.cat]}` : ""));
+  if (r.capacity) lines.push(`Počet miest: ${r.capacity} → capacity=${r.capacity}`);
+  if (r.covered != null) lines.push(`Zastrešený: ${r.covered ? "áno → covered=yes" : "nie → covered=no"}`);
+  if (r.note) lines.push(`Poznámka navrhovateľa: ${r.note}`);
+  const photo = await state.store.photoURL(r).catch(() => null);
+  if (photo && /^https:/.test(photo)) lines.push(`Fotka: ${photo}`);
+  lines.push("", "#StojanyBA");
+  return lines.join("\n");
+}
+async function createOsmNote(lat, lon, text) {
+  const res = await fetch("https://api.openstreetmap.org/api/0.6/notes.json", {
+    method: "POST", body: new URLSearchParams({ lat: lat.toFixed(6), lon: lon.toFixed(6), text }),
+  });
+  if (!res.ok) throw new Error("OSM HTTP " + res.status);
+  const json = await res.json();
+  const id = json?.properties?.id;
+  if (!id) throw new Error("OSM nevrátilo číslo poznámky");
+  return id;
+}
+
 async function openAdmin() {
-  const list = state.user.filter((r) => r.status === "pending");
+  const pending = state.user.filter((r) => r.status === "pending");
+  const report = toReport();
   const box = $("#adminList");
-  box.innerHTML = list.length ? "" : `<p class="empty">Nič nečaká na schválenie.</p>`;
-  for (const r of list) {
+  box.innerHTML = "";
+  const h1 = document.createElement("h3"); h1.className = "section-title"; h1.textContent = `Čakajú na schválenie (${pending.length})`; box.appendChild(h1);
+  if (!pending.length) box.insertAdjacentHTML("beforeend", `<p class="empty">Nič nečaká na schválenie.</p>`);
+  for (const r of pending) {
     const div = document.createElement("div"); div.className = "admin-item";
     div.innerHTML = `<div class="cat-chip">${pinHTML(r)}<span>${esc(CATS[r.cat].label)}</span></div>
       <img alt="Fotka navrhnutého stojana" hidden>
       <dl class="kv"><dt>Počet miest</dt><dd>${r.capacity ?? "Neuvedené"}</dd><dt>Zastrešený</dt><dd>${r.covered === true ? "Áno" : r.covered === false ? "Nie" : "Neuvedené"}</dd>
-      <dt>Pridané</dt><dd>${esc(new Date(r.createdAt).toLocaleString("sk-SK"))}</dd></dl>
+      <dt>Pridané</dt><dd>${esc(new Date(r.createdAt).toLocaleString("sk-SK"))}</dd>
+      <dt>Súhlas pre OSM</dt><dd>${r.osmConsent ? "Áno" : "Nie"}</dd></dl>
       ${r.note ? `<p class="note">${esc(r.note)}</p>` : ""}
       <div class="btn-row"><button class="btn" type="button" data-a="show">Ukázať na mape</button></div>
       <div class="btn-row"><button class="btn primary" type="button" data-a="approved">Schváliť</button><button class="btn danger" type="button" data-a="rejected">Zamietnuť</button></div>`;
@@ -1325,6 +1377,40 @@ async function openAdmin() {
         openAdmin();
       } catch (ex) { console.error(ex); toast("Zmenu sa nepodarilo uložiť."); }
     }));
+  }
+
+  const h2 = document.createElement("h3"); h2.className = "section-title"; h2.textContent = `Nahlásiť do OpenStreetMap (${report.length})`; box.appendChild(h2);
+  box.insertAdjacentHTML("beforeend", `<p class="lead">Schválené stojany, ktorých navrhovateľ súhlasil s použitím v OSM. Odošle sa verejná poznámka pre miestnych mapovačov. Text pred odoslaním môžeš upraviť.</p>`);
+  if (!report.length) box.insertAdjacentHTML("beforeend", `<p class="empty">Nič na nahlásenie.</p>`);
+  for (const r of report) {
+    const div = document.createElement("div"); div.className = "admin-item";
+    const tid = "noteText-" + r.id.replace(/[^a-z0-9]/gi, "");
+    div.innerHTML = `<div class="cat-chip">${pinHTML(r)}<span>${esc(CATS[r.cat].label)}</span></div>
+      <div class="field"><label class="label" for="${tid}">Text poznámky</label><textarea id="${tid}" rows="8" maxlength="2000"></textarea></div>
+      <div class="btn-row"><button class="btn" type="button" data-a="show">Ukázať na mape</button><button class="btn primary" type="button" data-a="send">Odoslať poznámku do OSM</button></div>
+      <p class="notice" role="alert" hidden></p>`;
+    box.appendChild(div);
+    const ta = div.querySelector("textarea"); noteText(r).then((t) => { ta.value = t; });
+    div.querySelector('[data-a="show"]').onclick = () => { $("#dlgAdmin").close(); map.setView([r.lat, r.lon], 18); };
+    const send = div.querySelector('[data-a="send"]'), msg = div.querySelector(".notice");
+    send.onclick = async () => {
+      const text = ta.value.trim();
+      if (text.length < 20) { msg.textContent = "Text poznámky je príliš krátky."; msg.hidden = false; return; }
+      send.disabled = true; send.textContent = "Odosielam…"; msg.hidden = true;
+      try {
+        const id = await createOsmNote(r.lat, r.lon, text);
+        await state.store.setOsmNote(r, id);
+        await loadUserData(); render();
+        toast("Poznámka je v OpenStreetMap.");
+        openAdmin();
+      } catch (ex) {
+        console.error(ex);
+        // záloha: správca poznámku vloží ručne na webe OSM
+        try { await navigator.clipboard.writeText(text); } catch {}
+        msg.innerHTML = `Poznámku sa nepodarilo odoslať automaticky. Text som skopíroval do schránky. <a href="https://www.openstreetmap.org/note/new#map=19/${r.lat.toFixed(5)}/${r.lon.toFixed(5)}" target="_blank" rel="noopener">Otvor OSM</a>, vlož ho a odošli ručne.`;
+        msg.hidden = false; send.disabled = false; send.textContent = "Skúsiť znova";
+      }
+    };
   }
   openSheet("dlgAdmin");
 }

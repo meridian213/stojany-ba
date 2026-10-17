@@ -21,7 +21,9 @@ create table if not exists public.racks (
   photo_path  text check (photo_path is null or photo_path ~ '^racks/[0-9a-f-]{36}\.jpg$'),
   status      text not null default 'pending' check (status in ('pending','approved','rejected')),
   created_at  timestamptz not null default now(),
-  approved_at timestamptz   -- nastavuje trigger pri schválení
+  approved_at timestamptz,  -- nastavuje trigger pri schválení
+  osm_consent boolean not null default false,  -- navrhovateľ súhlasí s použitím v OSM
+  osm_note_id bigint        -- číslo poznámky v OSM, nastavuje správca
 );
 
 -- Hodnotenia (pre stojany z OSM aj pre navrhnuté). Jedno hodnotenie na stojan a zariadenie.
@@ -54,6 +56,9 @@ grant execute on function private.is_admin() to anon, authenticated;
 create or replace function private.set_approved_at() returns trigger
 language plpgsql set search_path = '' as $$
 begin
+  if tg_op = 'INSERT' then
+    new.osm_note_id := null;
+  end if;
   if new.status = 'approved' then
     if tg_op = 'INSERT' or old.status is distinct from 'approved' then
       new.approved_at := now();
