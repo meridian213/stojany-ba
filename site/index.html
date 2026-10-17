@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d5bd8">
+<title>Stojany BA</title>
+<meta name="description" content="Mapa cyklostojanov v Bratislave. Nájdi najbližší bezpečný stojan, ohodnoť ho alebo navrhni nový.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Overpass:wght@700;800&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<style>
+/* Layout: celá obrazovka = mapa; hore lišta s názvom, dole palec-dostupná navigácia; všetko ostatné sú spodné panely (dialógy). */
+:root {
+  --bg: #eef2f7;
+  --surface: #ffffff;
+  --surface-2: #f5f7fb;
+  --fg: #14213a;
+  --muted: #4f5b72;
+  --line: #ccd4e1;
+  --accent: #1d5bd8;        /* modrá ako dopravná značka „cestička pre cyklistov“ */
+  --accent-fg: #ffffff;
+  --accent-soft: #e2ebfd;
+  --c-safe: #1b7442;
+  --c-shelter: #6a3fb5;
+  --c-informal: #9a5b00;
+  --c-bad: #c0282d;
+  --c-unknown: #5f6779;
+  --star: #c98a00;
+  --ok-bg: #e3f3ea;
+  --warn-bg: #fff3d6;
+  --shadow: 0 6px 24px rgba(16, 28, 52, .18);
+  --f-display: "Overpass", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tap: 48px;
+  --r: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
+    --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
+    --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6;
+    --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
+  --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
+  --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6;
+  --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 16px/1.45 var(--f-body);
+  display: grid; grid-template-rows: auto 1fr auto;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); }
+:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; border-radius: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: absolute; left: 8px; top: -60px; z-index: 2000; background: var(--accent); color: var(--accent-fg); padding: 12px 16px; border-radius: 8px; font-weight: 700; }
+.skip:focus { top: calc(8px + env(safe-area-inset-top, 0px)); }
+
+/* ---------- horná lišta ---------- */
+.topbar {
+  display: flex; align-items: center; gap: 12px;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  background: var(--surface); border-bottom: 1px solid var(--line);
+  position: relative; z-index: 1001;
+}
+.brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.brand-mark { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+.brand-mark svg { width: 22px; height: 22px; }
+.brand h1 { font: 800 1.25rem/1 var(--f-display); letter-spacing: -.01em; margin: 0; padding-top: 3px; }
+.brand p { margin: 2px 0 0; font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand > div { min-width: 0; }
+.icon-btn {
+  min-width: var(--tap); min-height: var(--tap); border-radius: 50%;
+  border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; padding: 0;
+}
+.icon-btn svg { width: 24px; height: 24px; }
+
+/* ---------- mapa ---------- */
+main { position: relative; min-height: 0; }
+#map { position: absolute; inset: 0; background: var(--surface-2); }
+.leaflet-container { font: 14px/1.3 var(--f-body); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .leaflet-tile-pane { filter: brightness(.78) contrast(1.1) saturate(.8); } }
+:root[data-theme="dark"] .leaflet-tile-pane { filter: brightness(.78) contrast(1.1) saturate(.8); }
+.leaflet-control-zoom a { width: 44px !important; height: 44px !important; line-height: 44px !important; font-size: 22px !important; }
+.leaflet-bar a { background: var(--surface); color: var(--fg); border-color: var(--line); }
+.leaflet-control-attribution { font-size: 11px; background: color-mix(in srgb, var(--surface) 85%, transparent) !important; color: var(--muted); }
+.leaflet-control-attribution a { color: var(--accent); }
+.leaflet-right { right: env(safe-area-inset-right, 0px); }
+
+.pin-wrap { background: none; border: none; }
+.pin {
+  width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+  border: 2.5px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); color: #fff;
+}
+.pin svg { width: 20px; height: 20px; }
+.pin-safe { background: var(--c-safe); }
+.pin-shelter { background: var(--c-shelter); border-radius: 8px; }
+.pin-informal { background: var(--c-informal); }
+.pin-bad { background: var(--c-bad); border-radius: 4px; transform: rotate(45deg); }
+.pin-bad svg { transform: rotate(-45deg); }
+.pin-unknown { background: var(--c-unknown); }
+.pin.is-pending { border: 2.5px dashed #fff; opacity: .8; }
+.leaflet-marker-icon:focus-visible .pin { outline: 3px solid var(--fg); outline-offset: 3px; }
+.cluster {
+  width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-fg); font: 800 15px/1 var(--f-display); padding-top: 2px;
+  border: 3px solid var(--surface); box-shadow: 0 1px 5px rgba(0,0,0,.35);
+}
+.cluster.lg { width: 50px; height: 50px; font-size: 16px; }
+.cluster-wrap { background: none; }
+.me-dot { width: 18px; height: 18px; border-radius: 50%; background: #2a7bff; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(42,123,255,.25); }
+
+.locate {
+  position: absolute; z-index: 1000; right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px)); bottom: 16px;
+  width: 56px; height: 56px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--surface); box-shadow: var(--shadow); display: grid; place-items: center; cursor: pointer;
+}
+.locate svg { width: 26px; height: 26px; }
+.locate[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+.status {
+  position: absolute; z-index: 1000; left: 50%; top: 12px; transform: translateX(-50%);
+  max-width: calc(100% - 32px); background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 999px; padding: 10px 16px; box-shadow: var(--shadow); font-size: .9rem; display: flex; gap: 10px; align-items: center;
+}
+.status.is-error { border-color: var(--c-bad); }
+.status button { border: none; background: none; color: var(--accent); font-weight: 700; padding: 6px 4px; cursor: pointer; text-decoration: underline; }
+
+/* režim pridávania */
+.crosshair { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; z-index: 999; pointer-events: none; }
+.crosshair svg { width: 100%; height: 100%; filter: drop-shadow(0 0 2px #fff) drop-shadow(0 0 1px #fff); }
+.addbar {
+  position: absolute; z-index: 1000; left: 0; right: 0; top: 0;
+  background: var(--surface); border-bottom: 1px solid var(--line); box-shadow: var(--shadow);
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
+  display: grid; gap: 10px;
+}
+.addbar p { margin: 0; }
+.addbar .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- spodná navigácia ---------- */
+.bottomnav {
+  display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 8px; align-items: center;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding: 8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  position: relative; z-index: 1001;
+}
+.nav-btn {
+  min-height: 56px; border: none; background: none; border-radius: var(--r); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .85rem; font-weight: 700; color: var(--fg);
+  position: relative;
+}
+.nav-btn svg { width: 24px; height: 24px; }
+.nav-btn.primary { background: var(--accent); color: var(--accent-fg); flex-direction: row; gap: 6px; font-size: .98rem; white-space: nowrap; }
+.nav-btn.primary svg { width: 20px; height: 20px; }
+.badge { position: absolute; top: 4px; right: calc(50% - 26px); min-width: 20px; height: 20px; border-radius: 10px; background: var(--accent); color: var(--accent-fg); font-size: .75rem; display: grid; place-items: center; padding: 0 5px; }
+
+/* ---------- tlačidlá a formuláre ---------- */
+.btn {
+  min-height: var(--tap); padding: 10px 18px; border-radius: var(--r); border: 1px solid var(--line);
+  background: var(--surface); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: var(--fg);
+}
+.btn svg { width: 20px; height: 20px; flex: none; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.danger { color: var(--c-bad); border-color: currentColor; }
+.btn.block { width: 100%; }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-row > .btn { flex: 1 1 140px; }
+
+/* ---------- spodné panely (dialógy) ---------- */
+dialog.sheet {
+  border: none; padding: 0; margin: auto auto 0; width: 100%; max-width: 640px; max-height: 90dvh;
+  border-radius: 18px 18px 0 0; background: var(--surface); color: var(--fg); box-shadow: var(--shadow);
+  display: none; flex-direction: column; overflow: hidden;
+}
+dialog.sheet[open] { display: flex; animation: up .22s ease-out; }
+@keyframes up { from { transform: translateY(24px); opacity: .6; } }
+@media (prefers-reduced-motion: reduce) { dialog.sheet[open] { animation: none; } }
+@media (min-width: 720px) { dialog.sheet { margin: auto; border-radius: 18px; max-height: 85dvh; } }
+dialog::backdrop { background: rgba(8, 14, 26, .5); }
+.sheet-head {
+  display: flex; align-items: center; gap: 8px; padding: 10px max(12px, env(safe-area-inset-right, 0px)) 10px max(20px, env(safe-area-inset-left, 0px));
+  border-bottom: 1px solid var(--line); flex: none;
+}
+.sheet-head h2 { font: 800 1.2rem/1.15 var(--f-display); margin: 0; flex: 1; padding-top: 3px; text-wrap: balance; }
+.sheet-body {
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 16px max(20px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(20px, env(safe-area-inset-left, 0px));
+  display: grid; gap: 18px;
+}
+.sheet-body > * { min-width: 0; }
+.lead { color: var(--muted); margin: 0; }
+
+fieldset { border: none; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
+.hint { color: var(--muted); font-size: .9rem; margin: -4px 0 4px; }
+.field { display: grid; gap: 6px; }
+.field input[type="number"], .field textarea, .field input[type="email"] {
+  min-height: var(--tap); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface-2); width: 100%;
+}
+.field textarea { min-height: 88px; resize: vertical; }
+
+.choice { display: grid; gap: 8px; }
+.choice label {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: center;
+  border: 1.5px solid var(--line); border-radius: var(--r); padding: 10px 14px; cursor: pointer; min-height: var(--tap);
+}
+.choice label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.choice label:has(input:focus-visible) { outline: 3px solid var(--fg); outline-offset: 2px; }
+.choice input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0; }
+.choice small { grid-column: 2; color: var(--muted); font-size: .88rem; }
+.choice .pin { width: 28px; height: 28px; border-width: 2px; }
+.choice .pin svg { width: 16px; height: 16px; }
+.choice .with-pin { display: flex; gap: 10px; align-items: center; font-weight: 700; }
+
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1.5px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.seg label { position: relative; min-height: 44px; display: grid; place-items: center; cursor: pointer; border-left: 1px solid var(--line); font-weight: 700; font-size: .95rem; padding: 0 4px; text-align: center; }
+.seg label:first-of-type { border-left: none; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:checked) { background: var(--accent); color: var(--accent-fg); }
+.seg label:has(input:focus-visible) { outline: 3px solid var(--fg); outline-offset: -4px; }
+.crit { display: grid; gap: 6px; }
+.crit > span { font-weight: 700; }
+
+.stars { display: flex; gap: 4px; }
+.stars input { position: absolute; opacity: 0; pointer-events: none; }
+.stars label { cursor: pointer; width: 52px; height: 52px; display: grid; place-items: center; border-radius: 10px; color: var(--line); }
+.stars label svg { width: 40px; height: 40px; }
+.stars:has(input[value="1"]:checked) label:nth-child(-n+1),
+.stars:has(input[value="2"]:checked) label:nth-child(-n+2),
+.stars:has(input[value="3"]:checked) label:nth-child(-n+3),
+.stars:has(input[value="4"]:checked) label:nth-child(-n+4),
+.stars:has(input[value="5"]:checked) label:nth-child(-n+5) { color: var(--star); }
+.stars label:has(input:focus-visible) { outline: 3px solid var(--fg); }
+
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--tap); cursor: pointer; }
+.switch input { width: 24px; height: 24px; accent-color: var(--accent); flex: none; }
+
+.photo-drop { border: 2px dashed var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; justify-items: start; }
+.photo-drop img { border-radius: 8px; max-height: 220px; object-fit: cover; }
+
+/* ---------- detail stojana ---------- */
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 700; }
+.cat-chip { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; }
+.cat-chip .pin { width: 30px; height: 30px; border-width: 2px; }
+.cat-chip .pin svg { width: 17px; height: 17px; }
+.score { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.score .big { font: 800 2rem/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.score .st { color: var(--star); letter-spacing: 2px; font-size: 1.2rem; }
+.bars { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.bars li { display: grid; gap: 4px; }
+.bars .bar-top { display: flex; justify-content: space-between; gap: 8px; font-size: .95rem; }
+.bars .bar-top b { font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--c-safe); }
+.note { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin: 0; }
+.notice { border-radius: 10px; padding: 12px 14px; margin: 0; background: var(--warn-bg); }
+.notice.ok { background: var(--ok-bg); }
+.detail-photo { border-radius: 12px; width: 100%; max-height: 280px; object-fit: cover; }
+.links { display: flex; gap: 16px; flex-wrap: wrap; font-size: .95rem; }
+.links a { padding: 8px 0; display: inline-block; }
+
+/* ---------- zoznam ---------- */
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.list button {
+  width: 100%; text-align: left; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: center;
+  background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--r); padding: 12px 14px; cursor: pointer; min-height: 64px;
+}
+.list .pin { width: 30px; height: 30px; border-width: 2px; grid-row: span 2; }
+.list .pin svg { width: 17px; height: 17px; }
+.list .t { font-weight: 700; min-width: 0; }
+.list .m { color: var(--muted); font-size: .9rem; grid-column: 2; min-width: 0; }
+.list .d { font: 800 1.05rem/1 var(--f-display); grid-row: span 2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty { color: var(--muted); text-align: center; padding: 24px 8px; margin: 0; }
+
+.legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.legend li { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; align-items: center; }
+.legend .pin { width: 30px; height: 30px; border-width: 2px; grid-row: span 2; }
+.legend .pin svg { width: 17px; height: 17px; }
+.legend small { color: var(--muted); }
+.section-title { font: 800 1rem/1.2 var(--f-display); margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.admin-item { border: 1.5px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; }
+.admin-item img { border-radius: 8px; max-height: 200px; object-fit: cover; }
+.demo-tag { display: inline-block; font-size: .78rem; font-weight: 700; background: var(--warn-bg); padding: 2px 8px; border-radius: 6px; }
+
+.toast {
+  position: fixed; z-index: 3000; left: 50%; transform: translateX(-50%);
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
+  background: var(--fg); color: var(--bg); padding: 12px 18px; border-radius: 12px; box-shadow: var(--shadow); font-weight: 700;
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#" id="skipToList">Preskočiť mapu a zobraziť zoznam stojanov</a>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2.5"/></svg>
+    </div>
+    <div>
+      <h1>Stojany BA</h1>
+      <p id="dataInfo">Načítavam stojany…</p>
+    </div>
+  </div>
+  <button class="icon-btn" id="btnInfo" type="button" aria-label="Legenda, o aplikácii a nastavenia" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+</header>
+
+<main>
+  <div id="map" role="region" aria-label="Mapa cyklostojanov. Stojany sú aj v zozname Najbližšie."></div>
+  <div class="status" id="status" role="status" hidden></div>
+  <div class="crosshair" id="crosshair" hidden aria-hidden="true">
+    <svg viewBox="0 0 64 64" fill="none" stroke="#1d5bd8" stroke-width="3"><circle cx="32" cy="32" r="12"/><path d="M32 4v16M32 44v16M4 32h16M44 32h16"/><circle cx="32" cy="32" r="2" fill="#1d5bd8"/></svg>
+  </div>
+  <div class="addbar" id="addbar" hidden>
+    <p><strong>Pridanie stojana, krok 1 z 2.</strong> Posuň mapu tak, aby bol krížik presne na mieste stojana.</p>
+    <div class="row">
+      <button class="btn primary" type="button" id="addConfirm">Miesto je správne</button>
+      <button class="btn" type="button" id="addUseGps">Použiť moju polohu</button>
+      <button class="btn" type="button" id="addCancel">Zrušiť</button>
+    </div>
+  </div>
+  <button class="locate" id="btnLocate" type="button" aria-pressed="false" aria-label="Ukázať moju polohu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+  </button>
+</main>
+
+<nav class="bottomnav" aria-label="Hlavné akcie">
+  <button class="nav-btn" id="btnList" type="button" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg>
+    Najbližšie
+  </button>
+  <button class="nav-btn primary" id="btnAdd" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    Pridať stojan
+  </button>
+  <button class="nav-btn" id="btnFilter" type="button" aria-haspopup="dialog">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+    Filter
+    <span class="badge" id="filterBadge" hidden></span>
+  </button>
+</nav>
+
+<!-- Detail stojana -->
+<dialog class="sheet" id="dlgDetail" aria-labelledby="detailTitle">
+  <div class="sheet-head"><span id="detailPin" class="cat-chip" aria-hidden="true"></span><h2 id="detailTitle">Stojan</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-body" id="detailBody"></div>
+</dialog>
+
+<!-- Zoznam najbližších -->
+<dialog class="sheet" id="dlgList" aria-labelledby="listTitle">
+  <div class="sheet-head"><h2 id="listTitle">Najbližšie stojany</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-body">
+    <p class="lead" id="listRef"></p>
+    <ul class="list" id="listItems"></ul>
+  </div>
+</dialog>
+
+<!-- Filter -->
+<dialog class="sheet" id="dlgFilter" aria-labelledby="filterTitle">
+  <div class="sheet-head"><h2 id="filterTitle">Filter</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <form class="sheet-body" id="filterForm">
+    <fieldset>
+      <legend>Typ stojana</legend>
+      <div class="choice" id="filterCats"></div>
+    </fieldset>
+    <fieldset>
+      <legend>Hodnotenie od používateľov</legend>
+      <div class="seg" role="radiogroup" aria-label="Minimálne hodnotenie">
+        <label><input type="radio" name="minStars" value="0" id="ms0">Všetky</label>
+        <label><input type="radio" name="minStars" value="3" id="ms3">3 ★ a viac</label>
+        <label><input type="radio" name="minStars" value="4" id="ms4">4 ★ a viac</label>
+      </div>
+      <p class="hint">Pri 3 ★ a 4 ★ sa zobrazia len stojany, ktoré už niekto hodnotil.</p>
+    </fieldset>
+    <fieldset>
+      <legend class="sr-only">Ďalšie podmienky</legend>
+      <label class="switch" for="fCovered"><span>Len zastrešené</span><input type="checkbox" id="fCovered"></label>
+      <label class="switch" for="fPublic"><span>Skryť súkromné a len pre zákazníkov</span><input type="checkbox" id="fPublic"></label>
+    </fieldset>
+    <p class="lead" id="filterCount" aria-live="polite"></p>
+    <div class="btn-row">
+      <button class="btn" type="button" id="filterReset">Zrušiť filter</button>
+      <button class="btn primary" type="submit">Zobraziť na mape</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Pridanie stojana -->
+<dialog class="sheet" id="dlgAdd" aria-labelledby="addTitle">
+  <div class="sheet-head"><h2 id="addTitle">Nový stojan, krok 2 z 2</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť bez uloženia">✕</button></div>
+  <form class="sheet-body" id="addForm" novalidate>
+    <p class="notice" id="dupWarn" hidden></p>
+    <fieldset>
+      <legend>Aký je to stojan? <span aria-hidden="true">*</span></legend>
+      <div class="choice" id="addCats"></div>
+    </fieldset>
+    <div class="field">
+      <label class="label" for="addCapacity">Koľko bicyklov sa doň zmestí?</label>
+      <input type="number" id="addCapacity" inputmode="numeric" min="1" max="500" placeholder="napr. 10">
+    </div>
+    <fieldset>
+      <legend>Je zastrešený?</legend>
+      <div class="seg">
+        <label><input type="radio" name="addCovered" value="yes" id="acY">Áno</label>
+        <label><input type="radio" name="addCovered" value="no" id="acN">Nie</label>
+        <label><input type="radio" name="addCovered" value="" id="acU" checked>Neviem</label>
+      </div>
+    </fieldset>
+    <div class="field">
+      <span class="label" id="photoLabel">Fotka stojana</span>
+      <p class="hint" id="photoHint">Pomôže správcovi stojan overiť. Z fotky sa pred odoslaním odstráni poloha a ďalšie údaje.</p>
+      <div class="photo-drop">
+        <img id="addPhotoPreview" alt="Náhľad vybranej fotky" hidden>
+        <input type="file" id="addPhoto" accept="image/*" class="sr-only" aria-labelledby="photoLabel" aria-describedby="photoHint">
+        <div class="btn-row" style="width:100%">
+          <button class="btn" type="button" id="addPhotoBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            <span id="addPhotoBtnText">Odfotiť alebo vybrať</span>
+          </button>
+          <button class="btn" type="button" id="addPhotoRemove" hidden>Odstrániť fotku</button>
+        </div>
+      </div>
+    </div>
+    <div class="field">
+      <label class="label" for="addNote">Poznámka</label>
+      <p class="hint" id="noteHint">Napr. „za vchodom do knižnice“. Najviac 300 znakov.</p>
+      <textarea id="addNote" maxlength="300" aria-describedby="noteHint"></textarea>
+    </div>
+    <p class="notice" id="addError" role="alert" hidden></p>
+    <button class="btn primary block" type="submit" id="addSubmit">Odoslať na schválenie</button>
+  </form>
+</dialog>
+
+<!-- Hodnotenie -->
+<dialog class="sheet" id="dlgRate" aria-labelledby="rateTitle">
+  <div class="sheet-head"><h2 id="rateTitle">Ohodnotiť stojan</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť bez uloženia">✕</button></div>
+  <form class="sheet-body" id="rateForm" novalidate>
+    <fieldset>
+      <legend>Celkovo <span aria-hidden="true">*</span></legend>
+      <div class="stars" id="rateStars"></div>
+    </fieldset>
+    <div class="crit-list" id="rateCrit" style="display:grid;gap:16px"></div>
+    <p class="notice" id="rateError" role="alert" hidden></p>
+    <button class="btn primary block" type="submit">Uložiť hodnotenie</button>
+  </form>
+</dialog>
+
+<!-- Info / legenda / nastavenia -->
+<dialog class="sheet" id="dlgInfo" aria-labelledby="infoTitle">
+  <div class="sheet-head"><h2 id="infoTitle">Legenda a nastavenia</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-body">
+    <h3 class="section-title">Legenda</h3>
+    <ul class="legend" id="legend"></ul>
+    <p class="lead">Prerušovaný okraj značky znamená, že stojan čaká na schválenie správcom.</p>
+    <h3 class="section-title">Dáta</h3>
+    <p class="lead" id="infoData"></p>
+    <button class="btn" type="button" id="btnRefresh">Znova načítať stojany z OpenStreetMap</button>
+    <h3 class="section-title">Správca</h3>
+    <div id="adminBox"></div>
+  </div>
+</dialog>
+
+<!-- Admin: čakajúce stojany -->
+<dialog class="sheet" id="dlgAdmin" aria-labelledby="adminTitle">
+  <div class="sheet-head"><h2 id="adminTitle">Na schválenie</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-body" id="adminList"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+"use strict";
+
+/* =========================================================================
+   NASTAVENIA
+   Bez vyplneného Supabase sa všetko ukladá len v tomto zariadení (demo).
+   Po vyplnení sa nové stojany, fotky a hodnotenia zdieľajú medzi všetkými.
+   ========================================================================= */
+const CONFIG = {
+  SUPABASE_URL: "",        // napr. "https://abcd1234.supabase.co"
+  SUPABASE_ANON_KEY: "",   // verejný „anon“ kľúč z Supabase (nie service_role!)
+  CENTER: [48.1486, 17.1077],
+  BBOX: [48.0, 16.95, 48.27, 17.34], // juh, západ, sever, východ – záloha a kontrola pri pridávaní
+  DATA_URL: "data/osm.json",   // stojany stiahnuté každú noc (GitHub Actions)
+  OVERPASS: ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"],
+  OSM_CACHE_HOURS: 24,
+  DUPLICATE_METERS: 15,
+};
+
+/* ---------- kategórie ---------- */
+const ICON = {
+  safe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M7 4v8a5 5 0 0 0 10 0V4"/><path d="M4 20h16"/></svg>',
+  shelter: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"><path d="M3 11l9-7 9 7"/><path d="M6 10v10h12V10"/><rect x="10" y="14" width="4" height="4"/></svg>',
+  informal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M3 8h18M6 8v12M12 8v12M18 8v12"/></svg>',
+  bad: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M12 5v9M12 19v.5"/></svg>',
+  unknown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M9 9a3 3 0 1 1 4.2 2.75c-.75.33-1.2 1-1.2 1.8v.7M12 19v.5"/></svg>',
+};
+const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg>';
+
+const CATS = {
+  safe:     { label: "Bezpečný stojan", desc: "Typ U alebo A. K stojanu sa dá pripevniť rám bicykla." },
+  shelter:  { label: "Uzamykateľný prístrešok alebo box", desc: "Cykloprístrešok, boxy, cyklovež." },
+  informal: { label: "Neformálne miesto", desc: "Zábradlie, plot alebo stĺp, kde ľudia bicykle zamykajú." },
+  bad:      { label: "Nevhodný stojan", desc: "„Lámač kolies“. Drží len koleso, rám sa zamknúť nedá." },
+  unknown:  { label: "Neznámy typ", desc: "Typ stojana zatiaľ nikto nezadal." },
+};
+const CAT_ORDER = ["safe", "shelter", "informal", "bad", "unknown"];
+
+// Prevod hodnoty OSM tagu bicycle_parking na naše kategórie. Na overenie s Cyklokoalíciou.
+const OSM_CAT = {
+  stands: "safe", racks: "safe", wide_stands: "safe", safe_loops: "safe", bollard: "safe", rack: "safe", "two-tier": "safe", anchors: "safe",
+  shed: "shelter", lockers: "shelter", building: "shelter",
+  informal: "informal", floor: "informal",
+  wall_loops: "bad", ground_slots: "bad", handlebar_holder: "bad", crossbar: "bad",
+};
+const OSM_TYPE_SK = {
+  stands: "stojan typu U", wide_stands: "široký stojan", safe_loops: "bezpečné oblúky", bollard: "stĺpik", rack: "stojan (rack)",
+  "two-tier": "dvojposchodový stojan", anchors: "kotvy v zemi", shed: "prístrešok", lockers: "boxy", building: "garáž/budova",
+  informal: "neformálne", floor: "vyhradená plocha", wall_loops: "oblúky na stene (lámač kolies)", ground_slots: "štrbiny v zemi (lámač kolies)",
+  handlebar_holder: "držiak riadidiel", crossbar: "priečka",
+};
+const ACCESS_SK = { private: "Súkromné", customers: "Len pre zákazníkov", permissive: "Verejne prístupné so súhlasom", no: "Neprístupné", yes: "Verejné" };
+
+const CRITERIA = [
+  { key: "frame", q: "Dá sa zamknúť rám bicykla?" },
+  { key: "covered", q: "Je zastrešený?" },
+  { key: "lit", q: "Je v noci osvetlený?" },
+  { key: "good_condition", q: "Je v dobrom stave?", hint: "Pevný, nepoškodený, nie je zarastený ani zatarasený." },
+];
+
+/* ---------- pomocné funkcie ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = (Math.random() * 16) | 0; return (c === "x" ? r : (r & 3) | 8).toString(16); }));
+const nf1 = new Intl.NumberFormat("sk-SK", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+function distM(a, b) {
+  const R = 6371000, toR = Math.PI / 180;
+  const dLat = (b[0] - a[0]) * toR, dLon = (b[1] - a[1]) * toR;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * toR) * Math.cos(b[0] * toR) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+function fmtDist(m) { return m < 1000 ? `${Math.round(m / 10) * 10} m` : `${nf1.format(m / 1000)} km`; }
+function plural(n, one, few, many) { return n === 1 ? one : n >= 2 && n <= 4 ? few : many; }
+function inBBox(lat, lon) { const [s, w, n, e] = CONFIG.BBOX; return lat >= s && lat <= n && lon >= w && lon <= e; }
+
+const prefs = {
+  get(k, d) { try { const v = localStorage.getItem("sba:" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("sba:" + k, JSON.stringify(v)); } catch {} },
+};
+const DEVICE_ID = prefs.get("deviceId", null) || (() => { const id = uuid(); prefs.set("deviceId", id); return id; })();
+
+// IndexedDB úložisko (fotky, dáta). Keď nie je dostupné (súkromné okno), drží sa v pamäti.
+const kv = (() => {
+  const mem = new Map();
+  let dbp = null;
+  function open() {
+    if (!dbp) dbp = new Promise((res, rej) => {
+      try {
+        const r = indexedDB.open("stojany-ba", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("kv");
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      } catch (e) { rej(e); }
+    });
+    return dbp;
+  }
+  async function run(mode, fn) {
+    const db = await open();
+    return new Promise((res, rej) => {
+      const t = db.transaction("kv", mode); const req = fn(t.objectStore("kv"));
+      t.oncomplete = () => res(req.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+    });
+  }
+  return {
+    async get(k) { try { return await run("readonly", (s) => s.get(k)); } catch { return mem.get(k); } },
+    async set(k, v) { try { await run("readwrite", (s) => s.put(v, k)); } catch { mem.set(k, v); } },
+  };
+})();
+
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("Nepodarilo sa načítať " + src)); document.head.appendChild(s); });
+}
+
+// Zmenšenie fotky a nové uloženie ako JPEG. Tým zmiznú aj EXIF údaje vrátane GPS.
+async function prepPhoto(file, max = 1280) {
+  let src;
+  try { src = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+  catch {
+    src = await new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = () => rej(new Error("Súbor nie je obrázok.")); img.src = URL.createObjectURL(file); });
+  }
+  const w = src.width, h = src.height, k = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext("2d").drawImage(src, 0, 0, c.width, c.height);
+  return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("Fotku sa nepodarilo spracovať."))), "image/jpeg", 0.78));
+}
+
+/* =========================================================================
+   ÚLOŽISKO: lokálne (demo) alebo Supabase (zdieľané)
+   ========================================================================= */
+class LocalStore {
+  constructor() { this.mode = "local"; }
+  async init() {
+    this.racks = (await kv.get("userRacks")) || [];
+    this.ratings = (await kv.get("ratings")) || [];
+  }
+  isAdmin() { return prefs.get("adminDemo", false) === true; }
+  async listUserRacks() { return this.racks.map((r) => ({ ...r })); }
+  async addRack(data, photo) {
+    const id = "u:" + uuid();
+    let photoKey = null;
+    if (photo) { photoKey = "photo:" + id; await kv.set(photoKey, photo); }
+    const rack = { ...data, id, source: "user", status: "pending", photo: photoKey, mine: true, createdAt: new Date().toISOString() };
+    this.racks.push(rack);
+    await kv.set("userRacks", this.racks);
+    return rack;
+  }
+  async photoURL(rack) { if (!rack.photo) return null; const b = await kv.get(rack.photo); return b ? URL.createObjectURL(b) : null; }
+  async listRatings() { return this.ratings; }
+  async addRating(r) {
+    if (this.ratings.some((x) => x.rackId === r.rackId && x.deviceId === DEVICE_ID)) throw Object.assign(new Error("already"), { code: "already" });
+    this.ratings.push({ ...r, deviceId: DEVICE_ID, createdAt: new Date().toISOString() });
+    await kv.set("ratings", this.ratings);
+  }
+  async setRackStatus(id, status) {
+    const r = this.racks.find((x) => x.id === id); if (r) r.status = status;
+    await kv.set("userRacks", this.racks);
+  }
+}
+
+class SupabaseStore {
+  constructor(url, key) { this.mode = "supabase"; this.url = url; this.key = key; this.admin = false; }
+  async init() {
+    await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js");
+    this.sb = window.supabase.createClient(this.url, this.key);
+    const { data } = await this.sb.auth.getSession();
+    this.session = data.session;
+    if (this.session) {
+      const { data: row } = await this.sb.from("admins").select("email").eq("email", this.session.user.email).maybeSingle();
+      this.admin = !!row;
+    }
+  }
+  isAdmin() { return this.admin; }
+  fromRow(r) {
+    return { id: "u:" + r.id, dbId: r.id, source: "user", lat: r.lat, lon: r.lon, cat: r.cat, capacity: r.capacity, covered: r.covered,
+      note: r.note, photo: r.photo_path, status: r.status, createdAt: r.created_at };
+  }
+  async listUserRacks() {
+    const { data, error } = await this.sb.from("racks").select("*");
+    if (error) throw error;
+    const remote = data.map((r) => this.fromRow(r));
+    // Vlastné čakajúce stojany databáza bežným ľuďom nevráti, preto si ich pamätáme v zariadení.
+    const ids = new Set(remote.map((r) => r.id));
+    const mine = prefs.get("myPending", []).filter((r) => !ids.has(r.id));
+    remote.forEach((r) => { if (prefs.get("myPending", []).some((m) => m.id === r.id)) r.mine = true; });
+    return remote.concat(mine.map((r) => ({ ...r, mine: true })));
+  }
+  async addRack(data, photo) {
+    const dbId = uuid();
+    let path = null;
+    if (photo) {
+      path = `racks/${dbId}.jpg`;
+      const { error } = await this.sb.storage.from("photos").upload(path, photo, { contentType: "image/jpeg", upsert: false });
+      if (error) throw error;
+    }
+    const row = { id: dbId, lat: data.lat, lon: data.lon, cat: data.cat, capacity: data.capacity, covered: data.covered, note: data.note || null, photo_path: path };
+    const { error } = await this.sb.from("racks").insert(row);
+    if (error) throw error;
+    const rack = this.fromRow({ ...row, status: "pending", created_at: new Date().toISOString() });
+    rack.mine = true;
+    const list = prefs.get("myPending", []); list.push(rack); prefs.set("myPending", list);
+    return rack;
+  }
+  async photoURL(rack) { return rack.photo ? this.sb.storage.from("photos").getPublicUrl(rack.photo).data.publicUrl : null; }
+  async listRatings() {
+    const { data, error } = await this.sb.from("ratings").select("rack_id, stars, frame, covered, lit, good_condition");
+    if (error) throw error;
+    const mineIds = new Set(prefs.get("myRated", []));
+    return data.map((r) => ({ rackId: r.rack_id, stars: r.stars, frame: r.frame, covered: r.covered, lit: r.lit, good_condition: r.good_condition }))
+      .concat([...mineIds].map((id) => ({ rackId: id, deviceId: DEVICE_ID, marker: true })));
+  }
+  async addRating(r) {
+    const { error } = await this.sb.from("ratings").insert({ rack_id: r.rackId, device_id: DEVICE_ID, stars: r.stars, frame: r.frame, covered: r.covered, lit: r.lit, good_condition: r.good_condition });
+    if (error) { if (error.code === "23505") throw Object.assign(new Error("already"), { code: "already" }); throw error; }
+    const list = prefs.get("myRated", []); list.push(r.rackId); prefs.set("myRated", list);
+  }
+  async setRackStatus(id, status) {
+    const dbId = id.replace(/^u:/, "");
+    const { error } = await this.sb.from("racks").update({ status }).eq("id", dbId);
+    if (error) throw error;
+  }
+  async signIn(email) {
+    const { error } = await this.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.split("#")[0], shouldCreateUser: false } });
+    if (error) throw error;
+  }
+  async signOut() { await this.sb.auth.signOut(); location.reload(); }
+}
+
+/* =========================================================================
+   STAV APLIKÁCIE
+   ========================================================================= */
+const state = {
+  store: null,
+  osm: [], osmTime: null,
+  user: [],
+  ratings: [],
+  agg: new Map(),
+  me: null,              // [lat, lon] z GPS
+  filter: Object.assign({ cats: CAT_ORDER.slice(), minStars: 0, covered: false, publicOnly: false }, prefs.get("filter", {})),
+  markers: new Map(),    // id -> L.Marker
+};
+
+/* ---------- mapa ---------- */
+const map = L.map("map", { zoomControl: false, center: CONFIG.CENTER, zoom: 14, minZoom: 11, maxZoom: 19, tapTolerance: 20 });
+L.control.zoom({ position: "topright", zoomInTitle: "Priblížiť", zoomOutTitle: "Oddialiť" }).addTo(map);
+map.attributionControl.setPosition("bottomleft");
+map.attributionControl.setPrefix('<a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a>');
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  maxZoom: 19,
+  attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">prispievatelia OpenStreetMap</a>',
+}).addTo(map);
+
+const cluster = L.markerClusterGroup({
+  showCoverageOnHover: false, disableClusteringAtZoom: 17, maxClusterRadius: 48, chunkedLoading: true, spiderfyOnMaxZoom: false,
+  iconCreateFunction(c) {
+    const n = c.getChildCount();
+    return L.divIcon({ className: "cluster-wrap", html: `<div class="cluster${n > 99 ? " lg" : ""}">${n}</div>`, iconSize: n > 99 ? [50, 50] : [42, 42] });
+  },
+});
+cluster.on("clusteranimationend", labelClusters);
+map.on("zoomend moveend", labelClusters);
+function labelClusters() {
+  // Zhluky sú ovládateľné klávesnicou; doplníme im zrozumiteľný názov pre čítačky obrazovky.
+  document.querySelectorAll(".cluster-wrap").forEach((el) => {
+    const n = el.textContent.trim();
+    el.setAttribute("aria-label", `Skupina ${n} ${plural(+n, "stojanu", "stojanov", "stojanov")}. Priblížiť.`);
+    el.setAttribute("role", "button");
+  });
+}
+map.addLayer(cluster);
+
+let meMarker = null, meCircle = null;
+
+/* ---------- údaje ---------- */
+function osmToRack(el) {
+  const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
+  if (lat == null || lon == null) return null;
+  const t = el.tags || {};
+  const cap = parseInt(t.capacity, 10);
+  return {
+    id: `osm:${el.type}/${el.id}`, source: "osm", lat, lon,
+    cat: OSM_CAT[t.bicycle_parking] || "unknown",
+    osmType: t.bicycle_parking || null,
+    capacity: Number.isFinite(cap) && cap > 0 ? cap : null,
+    covered: t.covered === "yes" ? true : t.covered === "no" ? false : null,
+    access: t.access || null,
+    name: t.name || null,
+    note: t.description || null,
+    operator: t.operator || null,
+    osmUrl: `https://www.openstreetmap.org/${el.type}/${el.id}`,
+    status: "approved",
+  };
+}
+
+async function overpass(query) {
+  let lastErr;
+  for (const ep of CONFIG.OVERPASS) {
+    const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 45000);
+    try {
+      const res = await fetch(ep, { method: "POST", body: "data=" + encodeURIComponent(query), headers: { "Content-Type": "application/x-www-form-urlencoded" }, signal: ctrl.signal });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return (await res.json()).elements || [];
+    } catch (e) { lastErr = e; } finally { clearTimeout(timer); }
+  }
+  throw lastErr;
+}
+
+async function fetchOSM() {
+  // Hranica mesta Bratislava (Wikidata Q1780); ak by nič nevrátila, použije sa obdĺžnik okolo mesta.
+  let els = await overpass('[out:json][timeout:60];area["wikidata"="Q1780"]->.a;nwr["amenity"="bicycle_parking"](area.a);out center tags;');
+  if (!els.length) {
+    const [s, w, n, e] = CONFIG.BBOX;
+    els = await overpass(`[out:json][timeout:60];nwr["amenity"="bicycle_parking"](${s},${w},${n},${e});out center tags;`);
+  }
+  return els.map(osmToRack).filter(Boolean);
+}
+
+// Najprv súbor pripravený každú noc na serveri; ak chýba, stojany sa stiahnu priamo z OSM.
+async function loadFromFile() {
+  const res = await fetch(CONFIG.DATA_URL, { cache: "no-cache" });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const data = await res.json();
+  const racks = (data.elements || []).map(osmToRack).filter(Boolean);
+  if (!racks.length) throw new Error("Prázdny súbor");
+  state.osm = racks; state.osmTime = Date.parse(data.fetched) || Date.now();
+  kv.set("osmCache", { t: state.osmTime, racks });
+  hideStatus(); render();
+}
+
+async function loadOSM(force = false) {
+  if (!force) {
+    try { await loadFromFile(); return; }
+    catch (e) { console.warn("Súbor so stojanmi nie je dostupný, skúšam OSM priamo.", e); }
+  }
+  const cached = await kv.get("osmCache");
+  if (cached && !force) {
+    state.osm = cached.racks; state.osmTime = cached.t;
+    render();
+    if (Date.now() - cached.t < CONFIG.OSM_CACHE_HOURS * 3600e3) return;
+  } else {
+    showStatus("Načítavam stojany z OpenStreetMap…");
+  }
+  try {
+    const racks = await fetchOSM();
+    state.osm = racks; state.osmTime = Date.now();
+    await kv.set("osmCache", { t: state.osmTime, racks });
+    hideStatus();
+    render();
+  } catch (e) {
+    console.error(e);
+    if (state.osm.length) { hideStatus(); toast("Stojany z OSM sa nepodarilo obnoviť, zobrazujem uložené."); }
+    else showStatus("Stojany z OpenStreetMap sa nepodarilo načítať. Skontroluj pripojenie.", true, () => loadOSM(true));
+  }
+}
+
+async function loadUserData() {
+  try {
+    state.user = await state.store.listUserRacks();
+    state.ratings = await state.store.listRatings();
+  } catch (e) {
+    console.error(e);
+    toast("Hodnotenia a pridané stojany sa nepodarilo načítať.");
+  }
+  computeAgg();
+}
+
+function computeAgg() {
+  const agg = new Map();
+  for (const r of state.ratings) {
+    if (r.marker) { const a = agg.get(r.rackId) || newAgg(); a.mine = true; agg.set(r.rackId, a); continue; }
+    const a = agg.get(r.rackId) || newAgg();
+    a.n++; a.sum += r.stars;
+    for (const c of CRITERIA) { if (r[c.key] === true) a[c.key].yes++; else if (r[c.key] === false) a[c.key].no++; }
+    if (r.deviceId === DEVICE_ID) a.mine = true;
+    agg.set(r.rackId, a);
+  }
+  state.agg = agg;
+  function newAgg() { const a = { n: 0, sum: 0, mine: false }; CRITERIA.forEach((c) => (a[c.key] = { yes: 0, no: 0 })); return a; }
+}
+const avgOf = (id) => { const a = state.agg.get(id); return a && a.n ? a.sum / a.n : null; };
+
+function isCovered(r) {
+  if (r.covered === true) return true;
+  const a = state.agg.get(r.id);
+  return !!(a && a.covered.yes > a.covered.no);
+}
+
+function visibleUserRacks() {
+  const admin = state.store?.isAdmin();
+  return state.user.filter((r) => r.status === "approved" || (admin && r.status === "pending") || (r.mine && r.status === "pending"));
+}
+function allRacks() { return state.osm.concat(visibleUserRacks()); }
+
+function passes(r) {
+  const f = state.filter;
+  if (!f.cats.includes(r.cat)) return false;
+  if (f.covered && !isCovered(r)) return false;
+  if (f.publicOnly && ["private", "customers", "no"].includes(r.access)) return false;
+  if (f.minStars > 0) { const a = avgOf(r.id); if (a == null || a < f.minStars) return false; }
+  return true;
+}
+function filteredRacks() { return allRacks().filter(passes); }
+
+/* ---------- vykreslenie ---------- */
+function pinHTML(r) {
+  const pending = r.source === "user" && r.status !== "approved";
+  return `<span class="pin pin-${r.cat}${pending ? " is-pending" : ""}" aria-hidden="true">${ICON[r.cat]}</span>`;
+}
+function rackTitle(r) {
+  const parts = [CATS[r.cat].label];
+  if (r.capacity) parts.push(`${r.capacity} ${plural(r.capacity, "miesto", "miesta", "miest")}`);
+  const a = avgOf(r.id); if (a != null) parts.push(`hodnotenie ${nf1.format(a)} z 5`);
+  if (r.source === "user" && r.status === "pending") parts.push("čaká na schválenie");
+  return parts.join(", ");
+}
+
+function render() {
+  const racks = filteredRacks();
+  const markers = [];
+  const seen = new Set();
+  for (const r of racks) {
+    seen.add(r.id);
+    let m = state.markers.get(r.id);
+    const title = rackTitle(r);
+    const icon = L.divIcon({ className: "pin-wrap", html: pinHTML(r), iconSize: [34, 34], iconAnchor: [17, 17] });
+    if (!m) {
+      m = L.marker([r.lat, r.lon], { icon, title, keyboard: true, riseOnHover: true });
+      m.on("click", () => openDetail(m._rackId));
+      m.on("add", () => { const el = m.getElement(); if (el) el.setAttribute("aria-label", m.options.title); });
+      state.markers.set(r.id, m);
+    } else {
+      m.setIcon(icon); m.options.title = title;
+      const el = m.getElement(); if (el) { el.setAttribute("aria-label", title); el.title = title; }
+    }
+    m._rackId = r.id;
+    markers.push(m);
+  }
+  for (const id of [...state.markers.keys()]) if (!seen.has(id)) state.markers.delete(id);
+  cluster.clearLayers();
+  cluster.addLayers(markers);
+
+  const total = allRacks().length;
+  const shown = racks.length;
+  const t = state.osmTime ? new Date(state.osmTime).toLocaleString("sk-SK", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
+  $("#dataInfo").textContent = total ? (shown === total ? `${total} ${plural(total, "stojan", "stojany", "stojanov")}` : `Zobrazených ${shown} z ${total} stojanov`) : "Načítavam stojany…";
+  $("#infoData").textContent = `Stojany pochádzajú z OpenStreetMap${t ? ` (stav k ${t})` : ""}. Hodnotenia a nové stojany sú ${state.store?.mode === "supabase" ? "zdieľané medzi všetkými používateľmi" : "zatiaľ uložené len v tomto zariadení (demo režim)"}.`;
+  const nOff = (CAT_ORDER.length - state.filter.cats.length) + (state.filter.minStars ? 1 : 0) + (state.filter.covered ? 1 : 0) + (state.filter.publicOnly ? 1 : 0);
+  const badge = $("#filterBadge"); badge.hidden = !nOff; badge.textContent = nOff;
+  $("#btnFilter").setAttribute("aria-label", nOff ? `Filter, ${nOff} aktívne` : "Filter");
+  setTimeout(labelClusters, 50);
+}
+
+/* ---------- dialógy ---------- */
+let lastFocus = null;
+function openSheet(id) {
+  const d = document.getElementById(id);
+  // Pri prechode z jedného panela do druhého si pamätáme pôvodný prvok mimo panelov, aby sa naň po zatvorení vrátil fokus.
+  if (!document.querySelector("dialog[open]")) lastFocus = document.activeElement;
+  document.querySelectorAll("dialog[open]").forEach((o) => { if (o !== d) { o._silent = true; o.close(); } });
+  if (!d.open) d.showModal();
+  return d;
+}
+document.querySelectorAll("dialog").forEach((d) => {
+  d.addEventListener("click", (e) => { if (e.target === d) d.close(); }); // klik na pozadie zavrie
+  d.addEventListener("close", () => { if (d._silent) { d._silent = false; return; } if (lastFocus && document.contains(lastFocus) && !document.querySelector("dialog[open]")) lastFocus.focus(); });
+  d.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => d.close()));
+});
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 4500);
+}
+function showStatus(msg, isError = false, retry = null) {
+  const s = $("#status"); s.innerHTML = ""; s.hidden = false; s.classList.toggle("is-error", isError);
+  const span = document.createElement("span"); span.textContent = msg; s.appendChild(span);
+  if (retry) { const b = document.createElement("button"); b.type = "button"; b.textContent = "Skúsiť znova"; b.onclick = retry; s.appendChild(b); }
+}
+function hideStatus() { $("#status").hidden = true; }
+
+/* ---------- detail ---------- */
+function findRack(id) { return allRacks().find((r) => r.id === id) || state.user.find((r) => r.id === id); }
+
+async function openDetail(id) {
+  const r = findRack(id); if (!r) return;
+  const a = state.agg.get(r.id);
+  const avg = avgOf(r.id);
+  const ref = state.me || null;
+  $("#detailTitle").textContent = r.name || CATS[r.cat].label;
+  $("#detailPin").innerHTML = pinHTML(r);
+  const body = $("#detailBody");
+  const pending = r.source === "user" && r.status !== "approved";
+  const accessTxt = r.access && ACCESS_SK[r.access];
+  const coveredTxt = r.covered === true ? "Áno" : r.covered === false ? "Nie" : "Neuvedené";
+
+  let h = "";
+  if (pending) h += `<p class="notice">Tento stojan ${r.mine ? "si navrhol ty a " : ""}čaká na schválenie správcom. Ostatní ho zatiaľ nevidia.</p>`;
+  if (r.source === "user") h += `<img class="detail-photo" id="detailPhoto" alt="Fotka stojana od používateľa" hidden>`;
+  h += `<dl class="kv">`;
+  if (r.name) h += `<dt>Typ</dt><dd>${esc(CATS[r.cat].label)}</dd>`;
+  if (r.osmType) h += `<dt>Podľa OSM</dt><dd>${esc(OSM_TYPE_SK[r.osmType] || r.osmType)}</dd>`;
+  h += `<dt>Počet miest</dt><dd>${r.capacity ? esc(r.capacity) : "Neuvedené"}</dd>`;
+  h += `<dt>Zastrešený</dt><dd>${coveredTxt}</dd>`;
+  if (accessTxt) h += `<dt>Prístup</dt><dd>${esc(accessTxt)}</dd>`;
+  if (r.operator) h += `<dt>Prevádzkovateľ</dt><dd>${esc(r.operator)}</dd>`;
+  if (ref) h += `<dt>Vzdialenosť</dt><dd>${fmtDist(distM(ref, [r.lat, r.lon]))}</dd>`;
+  h += `</dl>`;
+  if (r.note) h += `<p class="note">${esc(r.note)}</p>`;
+
+  const gUrl = `https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lon}&travelmode=bicycling`;
+  const aUrl = `https://maps.apple.com/?daddr=${r.lat},${r.lon}`;
+  h += `<div class="field"><span class="label" id="navLbl">Navigovať k stojanu na bicykli</span><div class="btn-row" role="group" aria-labelledby="navLbl">
+      <a class="btn primary" href="${gUrl}" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 20-8-5-8 5z"/></svg>
+        Google Mapy<span class="sr-only">, otvorí sa v novom okne</span></a>
+      <a class="btn" href="${aUrl}" target="_blank" rel="noopener">Apple Mapy<span class="sr-only">, otvorí sa v novom okne</span></a>
+    </div></div>`;
+
+  h += `<h3 class="section-title">Hodnotenie</h3>`;
+  if (a && a.n) {
+    const st = Math.round(avg);
+    h += `<div class="score"><span class="big">${nf1.format(avg)}</span><span class="st" aria-hidden="true">${"★".repeat(st)}${"☆".repeat(5 - st)}</span><span class="lead">${a.n} ${plural(a.n, "hodnotenie", "hodnotenia", "hodnotení")}</span></div>`;
+    h += `<ul class="bars">`;
+    for (const c of CRITERIA) {
+      const y = a[c.key].yes, n = a[c.key].no, tot = y + n;
+      h += `<li><div class="bar-top"><span>${esc(c.q.replace("?", ""))}</span><b>${tot ? `${y} z ${tot} áno` : "bez odpovede"}</b></div>
+        <div class="bar" aria-hidden="true"><i style="width:${tot ? Math.round((y / tot) * 100) : 0}%"></i></div></li>`;
+    }
+    h += `</ul>`;
+  } else {
+    h += `<p class="lead">Tento stojan zatiaľ nikto nehodnotil.</p>`;
+  }
+  if (pending) h += `<p class="lead">Hodnotiť sa bude dať po schválení.</p>`;
+  else if (a && a.mine) h += `<p class="notice ok">Tento stojan si už hodnotil. Ďakujeme!</p>`;
+  else h += `<button class="btn primary block" type="button" id="btnRate">Ohodnotiť tento stojan</button>`;
+
+  if (r.osmUrl) h += `<div class="links"><a href="${r.osmUrl}" target="_blank" rel="noopener">Zobraziť alebo opraviť v OpenStreetMap</a></div>`;
+  body.innerHTML = h;
+  const rb = $("#btnRate", body); if (rb) rb.onclick = () => openRate(r.id);
+  openSheet("dlgDetail");
+  body.scrollTop = 0;
+
+  if (r.source === "user") {
+    const url = await state.store.photoURL(r).catch(() => null);
+    const img = $("#detailPhoto", body); if (url && img) { img.src = url; img.hidden = false; }
+  }
+}
+
+/* ---------- hodnotenie ---------- */
+function buildRateForm() {
+  let s = "";
+  for (let i = 1; i <= 5; i++) {
+    s += `<label for="star${i}"><input type="radio" name="stars" id="star${i}" value="${i}"><span class="sr-only">${i} ${plural(i, "hviezdička", "hviezdičky", "hviezdičiek")} z 5</span>${STAR}</label>`;
+  }
+  $("#rateStars").innerHTML = s;
+  $("#rateCrit").innerHTML = CRITERIA.map((c) => `
+    <fieldset class="crit">
+      <legend>${esc(c.q)}</legend>
+      ${c.hint ? `<p class="hint">${esc(c.hint)}</p>` : ""}
+      <div class="seg">
+        <label><input type="radio" name="c_${c.key}" value="yes" id="c_${c.key}_y">Áno</label>
+        <label><input type="radio" name="c_${c.key}" value="no" id="c_${c.key}_n">Nie</label>
+        <label><input type="radio" name="c_${c.key}" value="" id="c_${c.key}_u">Neviem</label>
+      </div>
+    </fieldset>`).join("");
+}
+let rateId = null;
+function openRate(id) {
+  rateId = id;
+  const f = $("#rateForm"); f.reset(); $("#rateError").hidden = true;
+  CRITERIA.forEach((c) => ($(`#c_${c.key}_u`).checked = true));
+  const r = findRack(id);
+  if (r && r.covered != null) $(`#c_covered_${r.covered ? "y" : "n"}`).checked = true;
+  openSheet("dlgRate");
+}
+$("#rateForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const stars = parseInt(fd.get("stars"), 10);
+  const err = $("#rateError");
+  if (!stars) { err.textContent = "Vyber počet hviezdičiek od 1 do 5."; err.hidden = false; $("#star1").focus(); return; }
+  const val = (k) => (fd.get("c_" + k) === "yes" ? true : fd.get("c_" + k) === "no" ? false : null);
+  const rating = { rackId: rateId, stars };
+  CRITERIA.forEach((c) => (rating[c.key] = val(c.key)));
+  try {
+    await state.store.addRating(rating);
+    await loadUserData(); render();
+    toast("Hodnotenie je uložené. Ďakujeme!");
+    openDetail(rateId);
+  } catch (ex) {
+    err.textContent = ex.code === "already" ? "Tento stojan si už hodnotil z tohto zariadenia." : "Hodnotenie sa nepodarilo uložiť. Skontroluj pripojenie a skús znova.";
+    err.hidden = false; console.error(ex);
+  }
+});
+
+/* ---------- zoznam najbližších ---------- */
+function openList() {
+  const ref = state.me || [map.getCenter().lat, map.getCenter().lng];
+  const items = filteredRacks().map((r) => ({ r, d: distM(ref, [r.lat, r.lon]) })).sort((a, b) => a.d - b.d).slice(0, 30);
+  const p = $("#listRef");
+  p.innerHTML = "";
+  if (state.me) p.textContent = "Zoradené podľa vzdialenosti od tvojej polohy. Platí nastavený filter.";
+  else {
+    p.append("Zoradené od stredu mapy, lebo poloha nie je zapnutá. ");
+    const b = document.createElement("button"); b.type = "button"; b.className = "btn"; b.style.marginTop = "8px"; b.textContent = "Zapnúť moju polohu";
+    b.onclick = () => locate(true); p.append(b);
+  }
+  const ul = $("#listItems");
+  ul.innerHTML = items.length ? items.map(({ r, d }) => {
+    const a = avgOf(r.id);
+    const meta = [r.capacity ? `${r.capacity} ${plural(r.capacity, "miesto", "miesta", "miest")}` : null, isCovered(r) ? "zastrešený" : null, a != null ? `★ ${nf1.format(a)}` : "bez hodnotenia", r.status === "pending" ? "čaká na schválenie" : null].filter(Boolean).join(" · ");
+    return `<li><button type="button" data-id="${esc(r.id)}">${pinHTML(r)}<span class="t">${esc(r.name || CATS[r.cat].label)}</span><span class="d">${fmtDist(d)}</span><span class="m">${esc(meta)}</span></button></li>`;
+  }).join("") : `<li><p class="empty">Žiadny stojan nespĺňa filter. Skús ho upraviť.</p></li>`;
+  ul.querySelectorAll("button[data-id]").forEach((b) => b.addEventListener("click", () => {
+    const r = findRack(b.dataset.id);
+    map.setView([r.lat, r.lon], Math.max(map.getZoom(), 18));
+    openDetail(r.id);
+  }));
+  openSheet("dlgList");
+}
+
+/* ---------- filter ---------- */
+function buildFilter() {
+  $("#filterCats").innerHTML = CAT_ORDER.map((k) => `
+    <label for="fc_${k}"><input type="checkbox" id="fc_${k}" value="${k}"><span class="with-pin">${pinHTML({ cat: k, source: "osm" })}${esc(CATS[k].label)}</span><small>${esc(CATS[k].desc)}</small></label>`).join("");
+}
+function syncFilterForm() {
+  const f = state.filter;
+  CAT_ORDER.forEach((k) => ($("#fc_" + k).checked = f.cats.includes(k)));
+  $("#ms" + f.minStars).checked = true;
+  $("#fCovered").checked = f.covered; $("#fPublic").checked = f.publicOnly;
+  updateFilterCount();
+}
+function readFilterForm() {
+  return {
+    cats: CAT_ORDER.filter((k) => $("#fc_" + k).checked),
+    minStars: parseInt(new FormData($("#filterForm")).get("minStars") || "0", 10),
+    covered: $("#fCovered").checked, publicOnly: $("#fPublic").checked,
+  };
+}
+function updateFilterCount() {
+  const keep = state.filter; state.filter = readFilterForm();
+  const n = filteredRacks().length; state.filter = keep;
+  $("#filterCount").textContent = `Filtru vyhovuje ${n} ${plural(n, "stojan", "stojany", "stojanov")}.`;
+}
+$("#filterForm").addEventListener("change", updateFilterCount);
+$("#filterForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  state.filter = readFilterForm(); prefs.set("filter", state.filter);
+  render(); $("#dlgFilter").close();
+});
+$("#filterReset").addEventListener("click", () => {
+  state.filter = { cats: CAT_ORDER.slice(), minStars: 0, covered: false, publicOnly: false };
+  prefs.set("filter", state.filter); syncFilterForm(); render();
+});
+
+/* ---------- poloha ---------- */
+let watchId = null, followOnce = false;
+function locate(center = true) {
+  if (!("geolocation" in navigator)) { toast("Tento prehliadač nevie zistiť polohu."); return; }
+  followOnce = center;
+  if (watchId !== null) { if (state.me && center) map.setView(state.me, Math.max(map.getZoom(), 17)); return; }
+  showStatus("Zisťujem tvoju polohu…");
+  watchId = navigator.geolocation.watchPosition((pos) => {
+    hideStatus();
+    state.me = [pos.coords.latitude, pos.coords.longitude];
+    const acc = pos.coords.accuracy;
+    if (!meMarker) {
+      meMarker = L.marker(state.me, { icon: L.divIcon({ className: "", html: '<div class="me-dot"></div>', iconSize: [18, 18] }), keyboard: false, interactive: false, zIndexOffset: 1000 }).addTo(map);
+      meCircle = L.circle(state.me, { radius: acc, color: "#2a7bff", weight: 1, fillOpacity: 0.08, interactive: false }).addTo(map);
+    } else { meMarker.setLatLng(state.me); meCircle.setLatLng(state.me).setRadius(acc); }
+    $("#btnLocate").setAttribute("aria-pressed", "true");
+    if (followOnce) { map.setView(state.me, Math.max(map.getZoom(), 17)); followOnce = false; }
+    if ($("#dlgList").open) openList();
+  }, (err) => {
+    navigator.geolocation.clearWatch(watchId); watchId = null;
+    const msg = err.code === 1 ? "Prístup k polohe je zakázaný. Povoľ ho v nastaveniach prehliadača." : "Polohu sa nepodarilo zistiť. Skús to vonku alebo o chvíľu.";
+    showStatus(msg, true); setTimeout(hideStatus, 6000);
+  }, { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 });
+}
+
+/* ---------- pridanie stojana ---------- */
+let addPoint = null, addPhotoBlob = null;
+function enterAddMode() {
+  document.querySelectorAll("dialog[open]").forEach((d) => d.close());
+  if (map.getZoom() < 17) map.setZoom(17);
+  $("#crosshair").hidden = false; $("#addbar").hidden = false; $("#btnLocate").hidden = true;
+  $("#addConfirm").focus();
+}
+function exitAddMode() { $("#crosshair").hidden = true; $("#addbar").hidden = true; $("#btnLocate").hidden = false; }
+$("#btnAdd").addEventListener("click", enterAddMode);
+$("#addCancel").addEventListener("click", () => { exitAddMode(); $("#btnAdd").focus(); });
+$("#addUseGps").addEventListener("click", () => {
+  if (state.me) map.setView(state.me, 18); else locate(true);
+});
+$("#addConfirm").addEventListener("click", () => {
+  const c = map.getCenter();
+  if (!inBBox(c.lat, c.lng)) { toast("Toto miesto je mimo Bratislavy. Posuň mapu na stojan v meste."); return; }
+  addPoint = [c.lat, c.lng];
+  exitAddMode();
+  openAddForm();
+});
+function buildAddForm() {
+  $("#addCats").innerHTML = CAT_ORDER.filter((k) => k !== "unknown").map((k) => `
+    <label for="ac_${k}"><input type="radio" name="addCat" id="ac_${k}" value="${k}"><span class="with-pin">${pinHTML({ cat: k, source: "osm" })}${esc(CATS[k].label)}</span><small>${esc(CATS[k].desc)}</small></label>`).join("");
+}
+function openAddForm() {
+  const f = $("#addForm"); f.reset(); setPhoto(null); $("#addError").hidden = true;
+  const near = allRacks().map((r) => ({ r, d: distM(addPoint, [r.lat, r.lon]) })).filter((x) => x.d <= CONFIG.DUPLICATE_METERS).sort((a, b) => a.d - b.d)[0];
+  const w = $("#dupWarn");
+  if (near) { w.textContent = `Pozor: ${Math.round(near.d)} m odtiaľto už je stojan (${CATS[near.r.cat].label}). Pridaj nový len vtedy, ak ide o iný stojan.`; w.hidden = false; }
+  else w.hidden = true;
+  openSheet("dlgAdd");
+}
+function setPhoto(blob) {
+  addPhotoBlob = blob;
+  const img = $("#addPhotoPreview");
+  if (img.src) URL.revokeObjectURL(img.src);
+  if (blob) { img.src = URL.createObjectURL(blob); img.hidden = false; } else { img.removeAttribute("src"); img.hidden = true; }
+  $("#addPhotoRemove").hidden = !blob;
+  $("#addPhotoBtnText").textContent = blob ? "Vybrať inú fotku" : "Odfotiť alebo vybrať";
+}
+$("#addPhotoBtn").addEventListener("click", () => $("#addPhoto").click());
+$("#addPhotoRemove").addEventListener("click", () => { $("#addPhoto").value = ""; setPhoto(null); $("#addPhotoBtn").focus(); });
+$("#addPhoto").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; if (!file) return;
+  try { setPhoto(await prepPhoto(file)); } catch (ex) { toast(ex.message); }
+});
+$("#addForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const err = $("#addError");
+  const cat = fd.get("addCat");
+  if (!cat) { err.textContent = "Vyber, aký je to stojan."; err.hidden = false; $("#ac_safe").focus(); return; }
+  const cap = parseInt($("#addCapacity").value, 10);
+  if ($("#addCapacity").value && (!Number.isFinite(cap) || cap < 1 || cap > 500)) { err.textContent = "Počet miest musí byť číslo od 1 do 500."; err.hidden = false; $("#addCapacity").focus(); return; }
+  const cov = fd.get("addCovered");
+  const data = { lat: addPoint[0], lon: addPoint[1], cat, capacity: Number.isFinite(cap) ? cap : null, covered: cov === "yes" ? true : cov === "no" ? false : null, note: $("#addNote").value.trim().slice(0, 300) };
+  const btn = $("#addSubmit"); btn.disabled = true; btn.textContent = "Odosielam…";
+  try {
+    const rack = await state.store.addRack(data, addPhotoBlob);
+    await loadUserData(); render();
+    $("#dlgAdd").close();
+    toast("Ďakujeme! Stojan čaká na schválenie správcom.");
+    map.setView([rack.lat, rack.lon], 18);
+  } catch (ex) {
+    console.error(ex);
+    err.textContent = "Stojan sa nepodarilo odoslať. Skontroluj pripojenie a skús znova."; err.hidden = false;
+  } finally { btn.disabled = false; btn.textContent = "Odoslať na schválenie"; }
+});
+
+/* ---------- info, legenda, správca ---------- */
+function buildLegend() {
+  $("#legend").innerHTML = CAT_ORDER.map((k) => `<li>${pinHTML({ cat: k, source: "osm" })}<strong>${esc(CATS[k].label)}</strong><small>${esc(CATS[k].desc)}</small></li>`).join("");
+}
+function renderAdminBox() {
+  const box = $("#adminBox"); const st = state.store;
+  const pendingN = state.user.filter((r) => r.status === "pending").length;
+  if (st.mode === "local") {
+    box.innerHTML = `<label class="switch" for="adminDemo"><span>Režim správcu <span class="demo-tag">demo, len v tomto zariadení</span></span><input type="checkbox" id="adminDemo" ${st.isAdmin() ? "checked" : ""}></label>
+      ${st.isAdmin() ? `<button class="btn block" type="button" id="btnAdminList">Stojany na schválenie (${pendingN})</button>` : ""}`;
+    $("#adminDemo").onchange = (e) => { prefs.set("adminDemo", e.target.checked); render(); renderAdminBox(); };
+  } else if (st.isAdmin()) {
+    box.innerHTML = `<p class="lead">Prihlásený ako správca: ${esc(st.session.user.email)}</p>
+      <button class="btn block primary" type="button" id="btnAdminList">Stojany na schválenie (${pendingN})</button>
+      <button class="btn block" type="button" id="btnSignOut">Odhlásiť sa</button>`;
+    $("#btnSignOut").onclick = () => st.signOut();
+  } else {
+    box.innerHTML = `<form id="loginForm" class="field">
+        <label class="label" for="loginEmail">E-mail správcu</label>
+        <p class="hint">Pošleme ti odkaz na prihlásenie. Funguje len pre e-maily zapísané ako správcovia.</p>
+        <input type="email" id="loginEmail" autocomplete="email" required>
+        <button class="btn" type="submit">Poslať odkaz na prihlásenie</button>
+      </form>`;
+    $("#loginForm").onsubmit = async (e) => {
+      e.preventDefault();
+      try { await st.signIn($("#loginEmail").value.trim()); toast("Ak je e-mail správcu platný, prišiel ti odkaz na prihlásenie."); }
+      catch (ex) { console.error(ex); toast("Odkaz sa nepodarilo poslať. Skontroluj e-mail."); }
+    };
+  }
+  const b = $("#btnAdminList"); if (b) b.onclick = openAdmin;
+}
+async function openAdmin() {
+  const list = state.user.filter((r) => r.status === "pending");
+  const box = $("#adminList");
+  box.innerHTML = list.length ? "" : `<p class="empty">Nič nečaká na schválenie.</p>`;
+  for (const r of list) {
+    const div = document.createElement("div"); div.className = "admin-item";
+    div.innerHTML = `<div class="cat-chip">${pinHTML(r)}<span>${esc(CATS[r.cat].label)}</span></div>
+      <img alt="Fotka navrhnutého stojana" hidden>
+      <dl class="kv"><dt>Počet miest</dt><dd>${r.capacity ?? "Neuvedené"}</dd><dt>Zastrešený</dt><dd>${r.covered === true ? "Áno" : r.covered === false ? "Nie" : "Neuvedené"}</dd>
+      <dt>Pridané</dt><dd>${esc(new Date(r.createdAt).toLocaleString("sk-SK"))}</dd></dl>
+      ${r.note ? `<p class="note">${esc(r.note)}</p>` : ""}
+      <div class="btn-row"><button class="btn" type="button" data-a="show">Ukázať na mape</button></div>
+      <div class="btn-row"><button class="btn primary" type="button" data-a="approved">Schváliť</button><button class="btn danger" type="button" data-a="rejected">Zamietnuť</button></div>`;
+    box.appendChild(div);
+    state.store.photoURL(r).then((u) => { const img = div.querySelector("img"); if (u) { img.src = u; img.hidden = false; } }).catch(() => {});
+    div.querySelector('[data-a="show"]').onclick = () => { $("#dlgAdmin").close(); map.setView([r.lat, r.lon], 18); };
+    div.querySelectorAll('[data-a="approved"],[data-a="rejected"]').forEach((b) => (b.onclick = async () => {
+      try {
+        await state.store.setRackStatus(r.id, b.dataset.a);
+        await loadUserData(); render();
+        toast(b.dataset.a === "approved" ? "Stojan je schválený a vidia ho všetci." : "Návrh je zamietnutý.");
+        openAdmin();
+      } catch (ex) { console.error(ex); toast("Zmenu sa nepodarilo uložiť."); }
+    }));
+  }
+  openSheet("dlgAdmin");
+}
+
+/* ---------- ovládanie ---------- */
+$("#btnList").addEventListener("click", openList);
+$("#skipToList").addEventListener("click", (e) => { e.preventDefault(); openList(); });
+$("#btnFilter").addEventListener("click", () => { syncFilterForm(); openSheet("dlgFilter"); });
+$("#btnInfo").addEventListener("click", () => { renderAdminBox(); openSheet("dlgInfo"); });
+$("#btnLocate").addEventListener("click", () => locate(true));
+$("#btnRefresh").addEventListener("click", () => { $("#dlgInfo").close(); loadOSM(true); });
+
+/* ---------- štart ---------- */
+(async function start() {
+  buildFilter(); buildAddForm(); buildRateForm(); buildLegend();
+  const useSb = CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY;
+  state.store = useSb ? new SupabaseStore(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY) : new LocalStore();
+  try { await state.store.init(); }
+  catch (e) {
+    console.error(e);
+    toast("Zdieľané dáta nie sú dostupné, prepínam na demo režim v tomto zariadení.");
+    state.store = new LocalStore(); await state.store.init();
+  }
+  await loadUserData();
+  render();
+  loadOSM();
+})();
+</script>
+</body>
+</html>

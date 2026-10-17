@@ -1,0 +1,72 @@
+# Stojany BA
+
+Mobilná mapa cyklostojanov v Bratislave. Stojany sa každú noc automaticky sťahujú z OpenStreetMap, používatelia ich môžu hodnotiť a navrhovať nové, ktoré schvaľuje správca.
+
+## Čo je v repozitári
+
+| Cesta | Na čo slúži |
+|---|---|
+| `site/index.html` | Celá aplikácia (HTML, CSS, JavaScript v jednom súbore). |
+| `site/data/osm.json` | Stojany z OSM. Prepisuje ho nočná aktualizácia. |
+| `scripts/update-osm.mjs` | Stiahne stojany z Overpass API. Pri chybe alebo podozrivo malom počte súbor neprepíše. |
+| `scripts/keep-alive.mjs` | Každú noc pošle do Supabase malý dotaz, aby sa projekt nepozastavil. |
+| `.github/workflows/deploy.yml` | Každú noc o 2:17 UTC stiahne dáta a zverejní stránku. Beží aj po každej zmene a dá sa spustiť ručne. |
+| `supabase/schema.sql` | Databáza pre hodnotenia, návrhy a fotky vrátane prístupových pravidiel. |
+
+## Zverejnenie na GitHub Pages
+
+1. **Založ si GitHub účet** na github.com (ak ešte nemáš).
+2. **Vytvor repozitár**: tlačidlo *New repository*, názov napr. `stojany-ba`, viditeľnosť **Public** (GitHub Pages je na bezplatnom pláne len pre verejné repozitáre).
+3. **Nahraj súbory**: v repozitári *Add file → Upload files* a pretiahni obsah tohto priečinka.
+   Priečinok `.github` sa pri pretiahnutí niekedy vynechá, lebo je skrytý. Ak sa v repozitári neobjaví, vytvor ho ručne: *Add file → Create new file*, ako názov napíš `.github/workflows/deploy.yml` a vlož obsah súboru.
+4. **Zapni Pages**: *Settings → Pages → Build and deployment → Source:* **GitHub Actions**.
+5. **Spusti prvé zverejnenie**: záložka *Actions* → *Aktualizácia a zverejnenie* → *Run workflow*. Po pár minútach bude stránka na adrese
+   `https://<tvoje-meno>.github.io/stojany-ba/`
+
+Odteraz sa stránka aktualizuje sama: každú noc, a vždy keď v repozitári niečo zmeníš.
+
+## Napojenie Supabase (hodnotenia, návrhy, fotky)
+
+Bez tohto kroku stránka funguje, ale hodnotenia a návrhy sa ukladajú len v telefóne používateľa.
+
+1. **Založ projekt** na supabase.com. Ako región vyber **Frankfurt (eu-central-1)**, aby dáta zostali v EÚ.
+2. **Vytvor databázu**: *SQL Editor → New query*, vlož obsah `supabase/schema.sql` → *Run*.
+3. **Pridaj správcu**: *Authentication → Users → Add user* s tvojím e-mailom. Potom v SQL editore:
+   ```sql
+   insert into public.admins (email) values ('tvoj@email.sk');
+   ```
+4. **Povoľ prihlásenie zo stránky**: *Authentication → URL Configuration*
+   - *Site URL*: `https://<tvoje-meno>.github.io/stojany-ba/`
+   - *Redirect URLs*: tá istá adresa
+5. **Prepoj stránku**: *Project Settings → API* skopíruj **Project URL** a kľúč **anon public**. V GitHube otvor `site/index.html`, klikni na ceruzku (Edit) a vyplň na začiatku skriptu:
+   ```js
+   SUPABASE_URL: "https://xxxx.supabase.co",
+   SUPABASE_ANON_KEY: "eyJ...",
+   ```
+   Ulož (*Commit changes*). Stránka sa o pár minút zverejní znova.
+   Kľúč `anon` je určený na verejné použitie, chránia ho prístupové pravidlá v databáze. Kľúč **service_role** sem nikdy nedávaj.
+6. **Vyskúšaj**: na telefóne pridaj skúšobný stojan, potom sa v menu ☰ → *Správca* prihlás e-mailom a návrh schváľ.
+
+## Údržba a obmedzenia
+
+- **Neaktívny repozitár**: GitHub vypne naplánované spúšťanie, ak sa v repozitári 60 dní nič nedeje. Nočná aktualizácia ukladá dáta späť do repozitára, takže by k tomu nemalo dôjsť. Ak sa to stane, v *Actions* stačí workflow znova povoliť.
+- **Supabase na bezplatnom pláne** pozastaví projekt po týždni bez aktivity. Ako poistka pošle nočná aktualizácia do databázy jeden malý dotaz (`scripts/keep-alive.mjs`, adresu a kľúč berie zo `site/index.html`). Ak by sa projekt aj tak pozastavil, príde e-mail a v Supabase ho obnovíš tlačidlom *Resume project*, dáta zostanú zachované.
+- **Mapové dlaždice** sa berú z tile.openstreetmap.org. Pri malej návštevnosti je to v poriadku. Pri väčšej treba podľa pravidiel OSM prejsť na iného poskytovateľa máp.
+- **Výpadok OSM**: ak sa stojany v noci nepodarí stiahnuť, zverejnia sa posledné dobré dáta a v *Actions* sa zobrazí upozornenie.
+
+## Pred zverejnením pre ľudí
+
+- Doplň na stránku krátke **upozornenie o spracúvaní údajov**: ukladajú sa fotky a poloha navrhnutých stojanov, hodnotenia viazané na náhodné ID zariadenia a e-mail správcu. Z fotiek sa pred odoslaním odstraňujú EXIF údaje vrátane GPS.
+- Formulár na pridanie zatiaľ nemá ochranu proti robotom ani obmedzenie počtu odoslaní.
+
+## Prevod typov z OSM
+
+| Kategória v aplikácii | Hodnoty OSM tagu `bicycle_parking` |
+|---|---|
+| Bezpečný stojan | `stands`, `racks`, `wide_stands`, `safe_loops`, `bollard`, `rack`, `two-tier`, `anchors` |
+| Uzamykateľný prístrešok alebo box | `shed`, `lockers`, `building` |
+| Neformálne miesto | `informal`, `floor` |
+| Nevhodný stojan (lámač kolies) | `wall_loops`, `ground_slots`, `handlebar_holder`, `crossbar` |
+| Neznámy typ | chýbajúci tag a hodnoty zatiaľ nezaradené: `wave`, `upright_stands`, `saddle_holder`, `tree`, `surface` |
+
+Mapové dáta © prispievatelia OpenStreetMap, licencia ODbL.
