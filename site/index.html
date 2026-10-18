@@ -83,6 +83,9 @@ a { color: var(--accent); }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
 .brand-mark { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
 .brand-mark svg { width: 22px; height: 22px; }
+/* ikonka bicykla obnoví stránku; dotyková plocha 48 px */
+a.brand-mark { position: relative; }
+a.brand-mark::after { content: ""; position: absolute; inset: -7px; }
 .brand h1 { font: 800 1.2rem/1.05 var(--f-display); letter-spacing: -.01em; margin: 0; padding-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand p { margin: 2px 0 0; font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand > div { min-width: 0; }
@@ -332,9 +335,9 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
 
 <header class="topbar">
   <div class="brand">
-    <div class="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2.5"/></svg>
-    </div>
+    <a class="brand-mark" href="./" aria-label="Obnoviť stránku" title="Obnoviť stránku">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2.5"/></svg>
+    </a>
     <div>
       <h1>Cyklostojany Bratislava</h1>
       <p id="dataInfo">Načítavam stojany…</p>
