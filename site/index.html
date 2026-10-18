@@ -192,6 +192,19 @@ main { position: relative; min-height: 0; }
 .addbar p { margin: 0; }
 .addbar .row { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* informácia o cookies pri prvej návšteve (nezakrýva ovládanie, mapa ostáva použiteľná) */
+.privacy-note {
+  position: absolute; z-index: 1002; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: 12px;
+  max-width: 34rem; margin: 0 auto; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--shadow); padding: 14px 16px; display: grid; gap: 10px;
+}
+.privacy-note h2 { font: 800 1.05rem/1.2 var(--f-display); margin: 0; padding-top: 2px; }
+.privacy-note p { margin: 0; font-size: .95rem; }
+.privacy-note .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.privacy-note .row .btn { flex: 1 1 auto; }
+.privacy-list { margin: 0 0 12px; padding-left: 1.2em; display: grid; gap: 6px; color: var(--muted); }
+.privacy-list b { color: var(--fg); }
+
 /* ---------- spodná navigácia ---------- */
 .bottomnav {
   display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 8px; align-items: center;
@@ -387,6 +400,14 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <button class="btn" type="button" id="addCancel">Zrušiť</button>
     </div>
   </div>
+  <section class="privacy-note" id="privacyNote" aria-labelledby="privacyNoteTitle" hidden>
+    <h2 id="privacyNoteTitle">Cookies a súkromie</h2>
+    <p>Nepoužívame žiadne cookies ani nástroje na sledovanie a analytiku. V prehliadači si ukladáme len to, čo aplikácia potrebuje na fungovanie, napríklad tvoj filter a to, či si už stojan hodnotil.</p>
+    <div class="row">
+      <button class="btn primary" type="button" id="privacyOk">Rozumiem</button>
+      <button class="btn" type="button" id="privacyMore">Podrobnosti</button>
+    </div>
+  </section>
   <button class="locate" id="btnLocate" type="button" aria-pressed="false" aria-label="Ukázať moju polohu">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
   </button>
@@ -567,6 +588,15 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
     <p class="lead" id="infoData"></p>
     <a class="btn" href="prehlad.html">Prehľad pre mesto a mestské časti</a>
     <button class="btn" type="button" id="btnRefresh">Znova načítať stojany z OpenStreetMap</button>
+    <h3 class="section-title" id="privacyTitle" tabindex="-1">Súkromie a cookies</h3>
+    <ul class="privacy-list">
+      <li><b>Cookies nepoužívame.</b> Žiadna reklama, analytika ani sledovanie.</li>
+      <li><b>V tvojom prehliadači</b> (localStorage a IndexedDB) si ukladáme: náhodné číslo zariadenia, aby sa hodnotenie alebo hlas nezapočítal dvakrát; nastavenie filtra; ktoré stojany si hodnotil a kde si hlasoval; kópiu stojanov z OpenStreetMap pre rýchlejšie načítanie. Správcovi sa tu uloží aj prihlásenie.</li>
+      <li><b>Tvoja poloha</b> sa použije, len keď o to požiadaš, a zostáva v telefóne. Nikam ju neposielame.</li>
+      <li><b>Čo odošleš</b> (hodnotenie, návrh stojana, hlas „tu chýba stojan“) sa uloží v databáze Supabase v EÚ spolu s číslom zariadenia. To číslo nie je verejné. Z fotiek pred odoslaním odstraňujeme údaje o polohe (EXIF).</li>
+      <li><b>Externé služby</b>, ktoré pri načítaní stránky vidia tvoju IP adresu: GitHub Pages (stránka), OpenStreetMap (mapa), Google Fonts (písmo), unpkg a jsDelivr (knižnice), Supabase (databáza).</li>
+    </ul>
+    <button class="btn" type="button" id="btnWipe">Vymazať údaje aplikácie z tohto zariadenia</button>
     <h3 class="section-title">Správca</h3>
     <div id="adminBox"></div>
   </div>
@@ -1722,6 +1752,28 @@ $(".brand-mark").addEventListener("click", async (e) => {
 $("#btnLocate").addEventListener("click", () => locate(true));
 $("#btnRefresh").addEventListener("click", () => { $("#dlgInfo").close(); loadOSM(true); });
 
+/* ---------- informácia o cookies ---------- */
+// Nejde o súhlas: aplikácia ukladá len nevyhnutné údaje, preto stačí informovať.
+function initPrivacyNote() {
+  const note = $("#privacyNote");
+  if (prefs.get("privacyNoteSeen", false)) return;
+  note.hidden = false;
+  const done = () => { prefs.set("privacyNoteSeen", true); note.hidden = true; };
+  $("#privacyOk").onclick = () => { done(); $("#btnAdd").focus(); };
+  $("#privacyMore").onclick = () => { done(); openPrivacy(); };
+}
+function openPrivacy() {
+  renderAdminBox(); openSheet("dlgInfo");
+  const t = $("#privacyTitle"); t.scrollIntoView({ block: "start" }); t.focus({ preventScroll: true });
+}
+$("#btnWipe").addEventListener("click", async (e) => {
+  const b = e.currentTarget;
+  if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Naozaj vymazať? Klikni znova"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Vymazať údaje aplikácie z tohto zariadenia"; }, 5000); return; }
+  try { Object.keys(localStorage).filter((k) => k.startsWith("sba:") || k.startsWith("sb-")).forEach((k) => localStorage.removeItem(k)); } catch {}
+  try { await new Promise((res) => { const r = indexedDB.deleteDatabase("stojany-ba"); r.onsuccess = r.onerror = r.onblocked = res; }); } catch {}
+  location.href = location.pathname;
+});
+
 /* ---------- štart ---------- */
 (async function start() {
   buildFilter(); buildAddForm(); buildDemandForm(); buildRateForm(); buildLegend();
@@ -1735,6 +1787,7 @@ $("#btnRefresh").addEventListener("click", () => { $("#dlgInfo").close(); loadOS
   }
   await loadUserData();
   render();
+  initPrivacyNote();
   await loadOSM();
   openFromUrl();
 })();
