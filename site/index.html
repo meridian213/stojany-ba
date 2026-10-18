@@ -18,6 +18,13 @@
 <meta property="og:locale" content="sk_SK">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
+<!-- inštalácia na plochu telefónu -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cyklostojany">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preload" href="fonts/atkinson-hyperlegible-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -203,6 +210,18 @@ main { position: relative; min-height: 0; }
 .privacy-note .row .btn { flex: 1 1 auto; }
 .privacy-list { margin: 0 0 12px; padding-left: 1.2em; display: grid; gap: 6px; color: var(--muted); }
 .privacy-list b { color: var(--fg); }
+
+/* pridanie na plochu */
+.install-box { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; align-items: center; background: var(--accent-soft); border-radius: var(--r); padding: 14px 16px; margin-bottom: 8px; }
+.install-box img, .install-note img { width: 48px; height: 48px; border-radius: 12px; grid-row: span 2; }
+.install-box strong { font-size: 1.05rem; }
+.install-box p { margin: 0; color: var(--muted); font-size: .92rem; grid-column: 2; }
+.install-box .btn { grid-column: 1 / -1; margin-top: 8px; }
+.install-note .head { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; }
+.install-steps { margin: 0; padding-left: 1.4em; display: grid; gap: 14px; }
+.install-steps li { padding-left: 4px; }
+.install-steps .ico { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); vertical-align: middle; margin: 0 2px; color: var(--accent); }
+.install-steps .ico svg { width: 18px; height: 18px; }
 
 /* ---------- spodná navigácia ---------- */
 .bottomnav {
@@ -407,6 +426,14 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <button class="btn" type="button" id="privacyMore">Podrobnosti</button>
     </div>
   </section>
+  <section class="privacy-note install-note" id="installNote" aria-labelledby="installNoteTitle" hidden>
+    <div class="head"><img src="icon-192.png" alt=""><h2 id="installNoteTitle">Maj stojany vždy po ruke</h2></div>
+    <p>Pridaj si mapu na plochu telefónu. Otvorí sa jedným ťuknutím ako aplikácia, na celú obrazovku.</p>
+    <div class="row">
+      <button class="btn primary" type="button" id="installNoteYes">Pridať na plochu</button>
+      <button class="btn" type="button" id="installNoteNo">Teraz nie</button>
+    </div>
+  </section>
   <button class="locate" id="btnLocate" type="button" aria-pressed="false" aria-label="Ukázať moju polohu">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
   </button>
@@ -579,6 +606,12 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
 <dialog class="sheet" id="dlgInfo" aria-labelledby="infoTitle">
   <div class="sheet-head"><h2 id="infoTitle">Legenda a nastavenia</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
   <div class="sheet-body">
+    <div class="install-box" id="installBox" hidden>
+      <img src="icon-192.png" alt="">
+      <strong>Aplikácia na ploche</strong>
+      <p>Mapa sa otvorí jedným ťuknutím, na celú obrazovku a bez lišty prehliadača.</p>
+      <button class="btn primary" type="button" id="btnInstall">Pridať na plochu</button>
+    </div>
     <h3 class="section-title">Legenda</h3>
     <ul class="legend" id="legend"></ul>
     <p class="lead" style="display:flex;gap:12px;align-items:center"><span class="demand-pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>3</span><span>Miesto, kde ľudia hlásia, že chýba stojan. Číslo je počet hlasov.</span></p>
@@ -590,7 +623,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
     <h3 class="section-title" id="privacyTitle" tabindex="-1">Súkromie a cookies</h3>
     <ul class="privacy-list">
       <li><b>Cookies nepoužívame.</b> Žiadna reklama, analytika ani sledovanie.</li>
-      <li><b>V tvojom prehliadači</b> (localStorage a IndexedDB) si ukladáme: náhodné číslo zariadenia, aby sa hodnotenie alebo hlas nezapočítal dvakrát; nastavenie filtra; ktoré stojany si hodnotil a kde si hlasoval; kópiu stojanov z OpenStreetMap pre rýchlejšie načítanie. Správcovi sa tu uloží aj prihlásenie.</li>
+      <li><b>V tvojom prehliadači</b> (localStorage a IndexedDB) si ukladáme: náhodné číslo zariadenia, aby sa hodnotenie alebo hlas nezapočítal dvakrát; nastavenie filtra; ktoré stojany si hodnotil a kde si hlasoval; kópiu stojanov z OpenStreetMap pre rýchlejšie načítanie; počet návštev, aby sme ponuku „Pridať na plochu“ neukazovali hneď pri prvej. Správcovi sa tu uloží aj prihlásenie.</li>
       <li><b>Tvoja poloha</b> sa použije, len keď o to požiadaš, a zostáva v telefóne. Nikam ju neposielame.</li>
       <li><b>Čo odošleš</b> (hodnotenie, návrh stojana, hlas „tu chýba stojan“) sa uloží v databáze Supabase v EÚ spolu s číslom zariadenia. To číslo nie je verejné. Z fotiek pred odoslaním odstraňujeme údaje o polohe (EXIF).</li>
       <li><b>Externé služby</b>, ktoré pri načítaní stránky vidia tvoju IP adresu: GitHub Pages (stránka a písmo), OpenStreetMap (mapa), unpkg a jsDelivr (knižnice), Supabase (databáza).</li>
@@ -599,6 +632,12 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
     <h3 class="section-title">Správca</h3>
     <div id="adminBox"></div>
   </div>
+</dialog>
+
+<!-- Návod na pridanie na plochu (iPhone a prehliadače bez systémového tlačidla) -->
+<dialog class="sheet" id="dlgInstall" aria-labelledby="installTitle">
+  <div class="sheet-head"><h2 id="installTitle">Pridať na plochu</h2><button class="icon-btn" type="button" data-close aria-label="Zavrieť">✕</button></div>
+  <div class="sheet-body" id="installBody"></div>
 </dialog>
 
 <!-- Admin: čakajúce stojany -->
@@ -1751,6 +1790,76 @@ $(".brand-mark").addEventListener("click", async (e) => {
 $("#btnLocate").addEventListener("click", () => locate(true));
 $("#btnRefresh").addEventListener("click", () => { $("#dlgInfo").close(); loadOSM(true); });
 
+/* ---------- pridanie na plochu ---------- */
+const UA = navigator.userAgent;
+const isIOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isAndroid = /Android/i.test(UA);
+const isInApp = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|LinkedInApp|Line\//i.test(UA);   // prehliadač vnútri Messengera a pod.
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; updateInstallUI(); });
+window.addEventListener("appinstalled", () => {
+  installEvt = null; prefs.set("installed", true); $("#installNote").hidden = true; updateInstallUI();
+  toast("Hotovo. Cyklostojany nájdeš na ploche telefónu.");
+});
+// ponúkame len tam, kde sa to dá: Android/Chrome cez systémové okno, iPhone a ostatné cez návod
+function canInstall() { return !isStandalone() && !prefs.get("installed", false) && (!!installEvt || isIOS || isAndroid); }
+function updateInstallUI() { $("#installBox").hidden = !canInstall(); }
+async function startInstall() {
+  if (installEvt) {
+    const e = installEvt; installEvt = null;
+    e.prompt();
+    try { const { outcome } = await e.userChoice; if (outcome === "accepted") prefs.set("installed", true); } catch {}
+    updateInstallUI(); return;
+  }
+  openInstallHelp();
+}
+function openInstallHelp() {
+  const SHARE = `<span class="ico" role="img" aria-label="ikonka Zdieľať"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M8 7l4-4 4 4M7 10H5v11h14V10h-2"/></svg></span>`;
+  const DOTS = `<span class="ico" role="img" aria-label="ikonka ponuky"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span>`;
+  let h;
+  if (isInApp) {
+    h = `<p class="lead">Stránku máš otvorenú vo vnútri inej aplikácie (napríklad Messenger), odkiaľ sa na plochu pridať nedá.</p>
+      <ol class="install-steps">
+        <li>Ťukni na ponuku ${DOTS} alebo ${SHARE} (zvyčajne vpravo hore alebo dole).</li>
+        <li>Vyber <strong>Otvoriť v prehliadači</strong> (Safari alebo Chrome).</li>
+        <li>V prehliadači otvor menu ☰ a ťukni na <strong>Pridať na plochu</strong>.</li>
+      </ol>`;
+  } else if (isIOS) {
+    h = `<ol class="install-steps">
+        <li>Ťukni na ${SHARE} <strong>Zdieľať</strong>. V Safari je dole na lište (na iPade hore), v Chrome vpravo v paneli s adresou.</li>
+        <li>Posuň ponuku nižšie a vyber <strong>Pridať na plochu</strong>.</li>
+        <li>Potvrď tlačidlom <strong>Pridať</strong> vpravo hore.</li>
+      </ol>
+      <p class="lead">Ikonka Cyklostojany sa objaví na ploche a mapa sa z nej otvorí na celú obrazovku.</p>`;
+  } else {
+    h = `<ol class="install-steps">
+        <li>Ťukni na ponuku prehliadača ${DOTS} (vpravo hore).</li>
+        <li>Vyber <strong>Pridať na plochu</strong> alebo <strong>Inštalovať aplikáciu</strong>.</li>
+        <li>Potvrď tlačidlom <strong>Pridať</strong> alebo <strong>Inštalovať</strong>.</li>
+      </ol>`;
+  }
+  $("#installBody").innerHTML = h + `<button class="btn primary block" type="button" data-close style="margin-top:16px">Rozumiem</button>`;
+  $("#installBody [data-close]").onclick = () => $("#dlgInstall").close();
+  openSheet("dlgInstall");
+}
+$("#btnInstall").addEventListener("click", startInstall);
+// ponuka na karte: až pri ďalšej návšteve, nie pri prvej (vtedy je tam informácia o cookies)
+function initInstallNote() {
+  const visits = prefs.get("visits", 0) + 1; prefs.set("visits", visits);
+  updateInstallUI();
+  setTimeout(() => {
+    if (visits < 2 || prefs.get("installNoteDismissed", false) || !canInstall() || !$("#privacyNote").hidden || document.querySelector("dialog[open]")) return;
+    const n = $("#installNote"); n.hidden = false;
+    const close = () => { prefs.set("installNoteDismissed", true); n.hidden = true; };
+    $("#installNoteYes").onclick = () => { close(); startInstall(); };
+    $("#installNoteNo").onclick = () => { close(); toast("Pridať na plochu môžeš kedykoľvek v menu ☰."); $("#btnAdd").focus(); };
+  }, 2500);
+}
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+  navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW", e));
+}
+
 /* ---------- informácia o cookies ---------- */
 // Nejde o súhlas: aplikácia ukladá len nevyhnutné údaje, preto stačí informovať.
 function initPrivacyNote() {
@@ -1787,6 +1896,7 @@ $("#btnWipe").addEventListener("click", async (e) => {
   await loadUserData();
   render();
   initPrivacyNote();
+  initInstallNote();
   await loadOSM();
   openFromUrl();
 })();
