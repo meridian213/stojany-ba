@@ -40,7 +40,8 @@
   --c-informal: #9a5b00;
   --c-bad: #c0282d;
   --c-unknown: #5f6779;
-  --c-demand: #b4176f;   /* miesta, kde chýba stojan */
+  --c-demand: #b4176f;
+  --c-zero: #b45309;     /* oranžová: týždeň bez zmeny */   /* miesta, kde chýba stojan */
   --star: #c98a00;
   --ok-bg: #e3f3ea;
   --warn-bg: #fff3d6;
@@ -55,7 +56,7 @@
   :root:not([data-theme="light"]) {
     --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
     --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
-    --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5;
+    --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5; --c-zero: #f59e0b;
     --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
     color-scheme: dark;
   }
@@ -63,7 +64,7 @@
 :root[data-theme="dark"] {
   --bg: #0e1520; --surface: #172131; --surface-2: #1d2939; --fg: #e9eef7; --muted: #a9b4c8; --line: #2f3d54;
   --accent: #7aa5ff; --accent-fg: #0a1222; --accent-soft: #1f2e4b;
-  --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5;
+  --c-safe: #3fae6f; --c-shelter: #9a77e0; --c-informal: #d39321; --c-bad: #ec5a5f; --c-unknown: #8a93a6; --c-demand: #f06ab5; --c-zero: #f59e0b;
   --star: #f0b62e; --ok-bg: #173826; --warn-bg: #3a2f12; --shadow: 0 6px 24px rgba(0,0,0,.5);
   color-scheme: dark;
 }
@@ -101,6 +102,10 @@ a.brand-mark::after { content: ""; position: absolute; inset: -7px; }
 .brand h1 { font: 800 1.2rem/1.05 var(--f-display); letter-spacing: -.01em; margin: 0; padding-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand p { margin: 2px 0 0; font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand > div { min-width: 0; }
+.delta { font-weight: 700; }
+.delta.up { color: var(--c-safe); }
+.delta.down { color: var(--c-bad); }
+.delta.zero { color: var(--c-zero); }
 .icon-btn {
   min-width: var(--tap); min-height: var(--tap); border-radius: 50%;
   border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; cursor: pointer; padding: 0;
@@ -1065,7 +1070,10 @@ function renderHeader(total, shown) {
   const { added, removed } = weeklyChange();
   const net = added - removed, abs = Math.abs(net);   // jedno súhrnné číslo: pribudnuté mínus zmiznuté
   const vis = document.createElement("span"); vis.setAttribute("aria-hidden", "true");
-  vis.textContent = ` · ${net > 0 ? "+" : net < 0 ? "−" : "±"}${abs} za posledný týždeň`;
+  const num = document.createElement("span");
+  num.className = "delta " + (net > 0 ? "up" : net < 0 ? "down" : "zero");   // zelená / červená / oranžová
+  num.textContent = `${net > 0 ? "+" : net < 0 ? "−" : "±"}${abs}`;
+  vis.append(" · ", num, " za posledný týždeň");
   const sr = document.createElement("span"); sr.className = "sr-only";
   sr.textContent = net ? `, za posledný týždeň o ${abs} ${plural(abs, "stojan", "stojany", "stojanov")} ${net > 0 ? "viac" : "menej"}` : ", za posledný týždeň bez zmeny";
   el.append(vis, sr);
