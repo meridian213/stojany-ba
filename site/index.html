@@ -18,9 +18,8 @@
 <meta property="og:locale" content="sk_SK">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Overpass:wght@700;800&display=swap">
+<link rel="preload" href="fonts/atkinson-hyperlegible-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="fonts/fonts.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <style>
@@ -594,7 +593,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <li><b>V tvojom prehliadači</b> (localStorage a IndexedDB) si ukladáme: náhodné číslo zariadenia, aby sa hodnotenie alebo hlas nezapočítal dvakrát; nastavenie filtra; ktoré stojany si hodnotil a kde si hlasoval; kópiu stojanov z OpenStreetMap pre rýchlejšie načítanie. Správcovi sa tu uloží aj prihlásenie.</li>
       <li><b>Tvoja poloha</b> sa použije, len keď o to požiadaš, a zostáva v telefóne. Nikam ju neposielame.</li>
       <li><b>Čo odošleš</b> (hodnotenie, návrh stojana, hlas „tu chýba stojan“) sa uloží v databáze Supabase v EÚ spolu s číslom zariadenia. To číslo nie je verejné. Z fotiek pred odoslaním odstraňujeme údaje o polohe (EXIF).</li>
-      <li><b>Externé služby</b>, ktoré pri načítaní stránky vidia tvoju IP adresu: GitHub Pages (stránka), OpenStreetMap (mapa), Google Fonts (písmo), unpkg a jsDelivr (knižnice), Supabase (databáza).</li>
+      <li><b>Externé služby</b>, ktoré pri načítaní stránky vidia tvoju IP adresu: GitHub Pages (stránka a písmo), OpenStreetMap (mapa), unpkg a jsDelivr (knižnice), Supabase (databáza).</li>
     </ul>
     <button class="btn" type="button" id="btnWipe">Vymazať údaje aplikácie z tohto zariadenia</button>
     <h3 class="section-title">Správca</h3>

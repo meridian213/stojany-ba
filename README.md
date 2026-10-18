@@ -9,6 +9,7 @@ Mobilná mapa cyklostojanov v Bratislave. Stojany sa každú noc automaticky sť
 | `site/index.html` | Mapa – celá aplikácia (HTML, CSS, JavaScript v jednom súbore). |
 | `site/prehlad.html` | Prehľad pre mesto: počty po mestských častiach, najžiadanejšie miesta, hodnotenia, vývoj po mesiacoch a dáta na stiahnutie. |
 | `site/config.js` | Adresa a verejný kľúč Supabase. |
+| `site/fonts/` | Písma Atkinson Hyperlegible a Overpass (licencia OFL), uložené priamo tu namiesto Google Fonts kvôli súkromiu návštevníkov. |
 | `site/data/osm.json` | Stojany z OSM, každý s číslom mestskej časti. Prepisuje ho nočná aktualizácia. |
 | `site/data/districts.json` | Hranice 17 mestských častí z OSM (zjednodušené). Obnovuje sa raz za 30 dní. |
 | `site/data/history.json` | Mesačné súhrny (počet stojanov, kapacita, nevhodné, zastrešené) – stav na konci mesiaca. |
