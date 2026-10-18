@@ -342,7 +342,12 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
   position: fixed; z-index: 3000; left: 50%; transform: translateX(-50%);
   bottom: calc(92px + env(safe-area-inset-bottom, 0px)); max-width: calc(100% - 32px);
   background: var(--fg); color: var(--bg); padding: 12px 18px; border-radius: 12px; box-shadow: var(--shadow); font-weight: 700;
+  pointer-events: none;
 }
+/* hláška ako popover = zobrazí sa aj nad otvoreným panelom */
+.toast[popover] { inset: auto; left: 50%; bottom: calc(92px + env(safe-area-inset-bottom, 0px)); margin: 0; border: 0; width: max-content; }
+.btn.is-done { background: var(--ok-bg); border-color: var(--c-safe); color: var(--fg); }
+.btn.is-done svg { color: var(--c-safe); }
 </style>
 </head>
 <body>
@@ -568,7 +573,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
   <div class="sheet-body" id="adminList"></div>
 </dialog>
 
-<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" popover="manual" hidden></div>
 
 <script src="config.js"></script>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -1120,8 +1125,12 @@ document.querySelectorAll("dialog").forEach((d) => {
 });
 
 function toast(msg) {
-  const t = $("#toast"); t.textContent = msg; t.hidden = false;
-  clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 4500);
+  const t = $("#toast"), pop = typeof t.showPopover === "function";
+  t.textContent = msg; t.hidden = false;
+  // nad otvoreným panelom (dialógom) musí byť hláška znova vložená do hornej vrstvy
+  if (pop) { try { if (t.matches(":popover-open")) t.hidePopover(); t.showPopover(); } catch {} }
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { t.hidden = true; if (pop) { try { t.hidePopover(); } catch {} } }, 4500);
 }
 function showStatus(msg, isError = false, retry = null) {
   const s = $("#status"); s.innerHTML = ""; s.hidden = false; s.classList.toggle("is-error", isError);
@@ -1139,6 +1148,7 @@ function rackShareText(r) {
 }
 const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
 const LINK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>`;
+const CHECK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>`;
 function shareHTML() {
   return `<div class="field"><span class="label" id="shareLbl">Poslať stojan niekomu</span>
     <div class="btn-row share-row" role="group" aria-labelledby="shareLbl">
@@ -1158,8 +1168,13 @@ async function copyLink(url) {
 function bindShare(body, r) {
   const url = rackLink(r), text = rackShareText(r), title = "Cyklostojany Bratislava";
   const more = $("#shareMore", body), btn = $("#btnShare", body);
-  $("#btnCopyLink", body).onclick = async () => {
-    toast((await copyLink(url)) ? "Odkaz na stojan je skopírovaný. Vlož ho do správy." : "Odkaz sa nepodarilo skopírovať: " + url);
+  const cb = $("#btnCopyLink", body);
+  cb.onclick = async () => {
+    if (!(await copyLink(url))) { toast("Odkaz sa nepodarilo skopírovať: " + url); return; }
+    toast("Odkaz je skopírovaný. Vlož ho do správy.");
+    // tlačidlo na chvíľu ukáže fajku
+    cb.classList.add("is-done"); cb.innerHTML = `${CHECK_ICON}Skopírované`;
+    clearTimeout(cb._t); cb._t = setTimeout(() => { cb.classList.remove("is-done"); cb.innerHTML = `${LINK_ICON}Kopírovať odkaz`; }, 3000);
   };
   btn.onclick = async () => {
     // telefón: systémová ponuka (Messenger, WhatsApp, SMS, e-mail…)
