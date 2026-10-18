@@ -1704,6 +1704,13 @@ $("#btnList").addEventListener("click", openList);
 $("#skipToList").addEventListener("click", (e) => { e.preventDefault(); openList(); });
 $("#btnFilter").addEventListener("click", () => { syncFilterForm(); openSheet("dlgFilter"); });
 $("#btnInfo").addEventListener("click", () => { renderAdminBox(); openSheet("dlgInfo"); });
+// ikonka bicykla: najprv obnoví uložené kópie stránky (GitHub Pages ich drží až 10 min), potom ju načíta nanovo
+$(".brand-mark").addEventListener("click", async (e) => {
+  e.preventDefault();
+  const base = location.pathname.replace(/index\.html$/, "");
+  try { await Promise.all([base, base + "index.html", "config.js"].map((u) => fetch(u, { cache: "reload" }))); } catch {}
+  location.href = base;
+});
 $("#btnLocate").addEventListener("click", () => locate(true));
 $("#btnRefresh").addEventListener("click", () => { $("#dlgInfo").close(); loadOSM(true); });
 
