@@ -6,6 +6,18 @@
 <meta name="theme-color" content="#1d5bd8">
 <title>Cyklostojany Bratislava</title>
 <meta name="description" content="Mapa cyklostojanov v Bratislave. Nájdi najbližší bezpečný stojan, ohodnoť ho alebo navrhni nový.">
+<!-- náhľad odkazu v Messengeri, WhatsAppe a pod. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cyklostojany Bratislava">
+<meta property="og:title" content="Cyklostojany Bratislava">
+<meta property="og:description" content="Mapa cyklostojanov v Bratislave. Nájdi najbližší bezpečný stojan, ohodnoť ho alebo navrhni nový.">
+<meta property="og:image" content="https://meridian213.github.io/stojany-ba/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Cyklostojany Bratislava – mapa cyklostojanov">
+<meta property="og:locale" content="sk_SK">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Overpass:wght@700;800&display=swap">
@@ -298,6 +310,9 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
 .notice.ok { background: var(--ok-bg); }
 .detail-photo { border-radius: 12px; width: 100%; max-height: 280px; object-fit: cover; }
 .links { display: flex; gap: 16px; flex-wrap: wrap; font-size: .95rem; }
+.share-row > .btn { flex: 1 1 auto; white-space: nowrap; }
+.share-more { margin-top: 8px; }
+.share-more .btn { flex: 1 1 120px; }
 .links a { padding: 8px 0; display: inline-block; }
 
 /* ---------- zoznam ---------- */
@@ -1115,6 +1130,60 @@ function showStatus(msg, isError = false, retry = null) {
 }
 function hideStatus() { $("#status").hidden = true; }
 
+/* ---------- zdieľanie ---------- */
+// krátky čitateľný odkaz: …/stojany-ba/?rack=osm:node/123
+function rackLink(r) { return `${location.origin}${location.pathname.replace(/index\.html$/, "")}?rack=${encodeURIComponent(r.id).replace(/%3A/g, ":").replace(/%2F/g, "/")}`; }
+function rackShareText(r) {
+  const what = r.name ? `${r.name} (${CATS[r.cat].label.toLowerCase()})` : CATS[r.cat].label;
+  return `Cyklostojan: ${what}${r.capacity ? `, ${r.capacity} ${plural(+r.capacity, "miesto", "miesta", "miest")}` : ""}`;
+}
+const SHARE_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>`;
+const LINK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 007 0l3-3a5 5 0 00-7-7l-1 1M14 11a5 5 0 00-7 0l-3 3a5 5 0 007 7l1-1"/></svg>`;
+function shareHTML() {
+  return `<div class="field"><span class="label" id="shareLbl">Poslať stojan niekomu</span>
+    <div class="btn-row share-row" role="group" aria-labelledby="shareLbl">
+      <button class="btn" type="button" id="btnShare" aria-controls="shareMore" aria-expanded="false">${SHARE_ICON}Zdieľať</button>
+      <button class="btn" type="button" id="btnCopyLink">${LINK_ICON}Kopírovať odkaz</button>
+    </div>
+    <div class="btn-row share-more" id="shareMore" hidden></div></div>`;
+}
+async function copyLink(url) {
+  try { await navigator.clipboard.writeText(url); return true; }
+  catch {
+    // staršie prehliadače: dočasné textové pole
+    const t = document.createElement("textarea"); t.value = url; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(t); t.select(); let ok = false; try { ok = document.execCommand("copy"); } catch {} t.remove(); return ok;
+  }
+}
+function bindShare(body, r) {
+  const url = rackLink(r), text = rackShareText(r), title = "Cyklostojany Bratislava";
+  const more = $("#shareMore", body), btn = $("#btnShare", body);
+  $("#btnCopyLink", body).onclick = async () => {
+    toast((await copyLink(url)) ? "Odkaz na stojan je skopírovaný. Vlož ho do správy." : "Odkaz sa nepodarilo skopírovať: " + url);
+  };
+  btn.onclick = async () => {
+    // telefón: systémová ponuka (Messenger, WhatsApp, SMS, e-mail…)
+    if (navigator.share) {
+      try { await navigator.share({ title, text, url }); return; }
+      catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    // počítač alebo prehliadač bez systémovej ponuky: odkazy na aplikácie
+    if (!more.childElementCount) {
+      const t = encodeURIComponent(`${text}\n${url}`), u = encodeURIComponent(url);
+      const items = [
+        ["WhatsApp", `https://wa.me/?text=${t}`],
+        /Android|iPhone|iPad/i.test(navigator.userAgent) ? ["Messenger", `fb-messenger://share/?link=${u}`] : ["Facebook", `https://www.facebook.com/sharer/sharer.php?u=${u}`],
+        ["Telegram", `https://t.me/share/url?url=${u}&text=${encodeURIComponent(text)}`],
+        ["E-mail", `mailto:?subject=${encodeURIComponent(text)}&body=${t}`],
+        ["SMS", `sms:?&body=${t}`],
+      ];
+      more.innerHTML = items.map(([n, h]) => `<a class="btn" href="${esc(h)}" ${h.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>${n}${h.startsWith("http") ? '<span class="sr-only">, otvorí sa v novom okne</span>' : ""}</a>`).join("");
+    }
+    more.hidden = !more.hidden; btn.setAttribute("aria-expanded", String(!more.hidden));
+    if (!more.hidden) more.querySelector("a").focus();
+  };
+}
+
 /* ---------- detail ---------- */
 function findRack(id) { return allRacks().find((r) => r.id === id) || state.user.find((r) => r.id === id); }
 
@@ -1152,6 +1221,7 @@ async function openDetail(id) {
         Google Mapy<span class="sr-only">, otvorí sa v novom okne</span></a>
       <a class="btn" href="${aUrl}" target="_blank" rel="noopener">Apple Mapy<span class="sr-only">, otvorí sa v novom okne</span></a>
     </div></div>`;
+  if (!pending) h += shareHTML();
 
   h += `<h3 class="section-title">Hodnotenie</h3>`;
   if (a && a.n) {
@@ -1175,6 +1245,7 @@ async function openDetail(id) {
   if (r.osmUrl) h += `<div class="links"><a href="${r.osmUrl}" target="_blank" rel="noopener">Zobraziť alebo opraviť v OpenStreetMap</a></div>`;
   body.innerHTML = h;
   const rb = $("#btnRate", body); if (rb) rb.onclick = () => openRate(r.id);
+  if (!pending) bindShare(body, r);
   openSheet("dlgDetail");
   body.scrollTop = 0;
 
@@ -1643,7 +1714,11 @@ function openFromUrl() {
   const at = (q.get("at") || "").split(",").map(Number);
   if (at.length === 2 && at.every(Number.isFinite) && inBBox(at[0], at[1])) map.setView(at, 18);
   const id = q.get("rack");
-  if (id) { const r = findRack(id); if (r) { map.setView([r.lat, r.lon], 18); openDetail(r.id); } }
+  if (id) {
+    const r = findRack(id);
+    if (r) { map.setView([r.lat, r.lon], 18); openDetail(r.id); }
+    else toast("Stojan z odkazu sa na mape už nenachádza. Možno ho medzitým odstránili.");
+  }
 }
 </script>
 </body>
