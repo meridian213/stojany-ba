@@ -1063,10 +1063,11 @@ function renderHeader(total, shown) {
   el.textContent = `${total} ${plural(total, "stojan", "stojany", "stojanov")}`;
   if (!state.trackingSince) return;   // zmeny ešte nesledujeme
   const { added, removed } = weeklyChange();
+  const net = added - removed, abs = Math.abs(net);   // jedno súhrnné číslo: pribudnuté mínus zmiznuté
   const vis = document.createElement("span"); vis.setAttribute("aria-hidden", "true");
-  vis.textContent = ` · +${added} / −${removed} za týždeň`;
+  vis.textContent = ` · ${net > 0 ? "+" : net < 0 ? "−" : "±"}${abs} za posledný týždeň`;
   const sr = document.createElement("span"); sr.className = "sr-only";
-  sr.textContent = `, za posledný týždeň ${plural(added, "pribudol", "pribudli", "pribudlo")} ${added}, ${plural(removed, "ubudol", "ubudli", "ubudlo")} ${removed}`;
+  sr.textContent = net ? `, za posledný týždeň o ${abs} ${plural(abs, "stojan", "stojany", "stojanov")} ${net > 0 ? "viac" : "menej"}` : ", za posledný týždeň bez zmeny";
   el.append(vis, sr);
 }
 
