@@ -61,7 +61,7 @@ Bez tohto kroku stránka funguje, ale hodnotenia a návrhy sa ukladajú len v te
 
 ## Pred zverejnením pre ľudí
 
-- Doplň na stránku krátke **upozornenie o spracúvaní údajov**: ukladajú sa fotky a poloha navrhnutých stojanov, hodnotenia viazané na náhodné ID zariadenia a e-mail správcu. Z fotiek sa pred odoslaním odstraňujú EXIF údaje vrátane GPS.
+- **Súkromie a cookies**: pri prvej návšteve sa zobrazí krátka informácia (aplikácia nepoužíva cookies, súhlas preto netreba). Podrobnosti sú v menu ☰ → *Súkromie a cookies*. Ak pridáš analytiku alebo inú službu tretej strany, treba text upraviť a zvážiť súhlas.
 - Formulár na pridanie zatiaľ nemá ochranu proti robotom ani obmedzenie počtu odoslaní.
 
 ## Prevod typov z OSM
