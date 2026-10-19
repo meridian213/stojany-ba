@@ -115,7 +115,7 @@ create table if not exists public.demand (
   id         bigint generated always as identity primary key,
   lat        double precision not null check (lat between 48.0 and 48.27),
   lon        double precision not null check (lon between 16.95 and 17.34),
-  reason     text not null check (reason in ('work','shop','school','transit','office','home','leisure','other')),
+  reason     text not null check (reason in ('work','shop','school','kids','transit','office','home','leisure','other')),
   device_id  text not null check (char_length(device_id) between 8 and 64),
   cell       text generated always as (round((lat * 3000)::numeric)::text || ':' || round((lon * 2000)::numeric)::text) stored,
   created_at timestamptz not null default now(),
