@@ -4,17 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1d5bd8">
-<title>Cyklostojany Bratislava</title>
+<title>cinkcink – cyklostojany v Bratislave</title>
 <meta name="description" content="Mapa cyklostojanov v Bratislave. Nájdi najbližší bezpečný stojan, ohodnoť ho alebo navrhni nový.">
 <!-- náhľad odkazu v Messengeri, WhatsAppe a pod. -->
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Cyklostojany Bratislava">
-<meta property="og:title" content="Cyklostojany Bratislava">
+<meta property="og:site_name" content="cinkcink">
+<meta property="og:title" content="cinkcink – cyklostojany v Bratislave">
+<meta property="og:url" content="https://cinkcink.sk/">
 <meta property="og:description" content="Mapa cyklostojanov v Bratislave. Nájdi najbližší bezpečný stojan, ohodnoť ho alebo navrhni nový.">
-<meta property="og:image" content="https://meridian213.github.io/stojany-ba/og.png">
+<meta property="og:image" content="https://cinkcink.sk/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Cyklostojany Bratislava – mapa cyklostojanov">
+<meta property="og:image:alt" content="cinkcink – mapa cyklostojanov v Bratislave">
 <meta property="og:locale" content="sk_SK">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -30,7 +31,7 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Cyklostojany">
+<meta name="apple-mobile-web-app-title" content="cinkcink">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="preload" href="fonts/atkinson-hyperlegible-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="fonts/fonts.css">
@@ -88,6 +89,7 @@ body {
   background: var(--bg); color: var(--fg);
   font: 16px/1.45 var(--f-body);
   display: grid; grid-template-rows: auto 1fr auto;
+  grid-template-columns: minmax(0, 1fr);   /* obsah nesmie roztiahnuť stránku do šírky */
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
@@ -96,8 +98,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--accent); }
 :focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; border-radius: 6px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.skip { position: absolute; left: 8px; top: -60px; z-index: 2000; background: var(--accent); color: var(--accent-fg); padding: 12px 16px; border-radius: 8px; font-weight: 700; }
-.skip:focus { top: calc(8px + env(safe-area-inset-top, 0px)); }
+.skip { position: absolute; left: 8px; right: 8px; top: 0; transform: translateY(-110%); z-index: 2000; background: var(--accent); color: var(--accent-fg); padding: 12px 16px; border-radius: 8px; font-weight: 700; }
+.skip:focus { transform: translateY(calc(8px + env(safe-area-inset-top, 0px))); }
 
 /* ---------- horná lišta ---------- */
 .topbar {
@@ -115,7 +117,10 @@ html.ios.standalone .topbar { padding-top: calc(32px + env(safe-area-inset-top, 
 /* ikonka bicykla obnoví stránku; dotyková plocha 48 px */
 a.brand-mark { position: relative; }
 a.brand-mark::after { content: ""; position: absolute; inset: -7px; }
-.brand h1 { font: 800 1.2rem/1.05 var(--f-display); letter-spacing: -.01em; margin: 0; padding-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand h1 { font: 800 1.25rem/1.05 var(--f-display); letter-spacing: -.01em; margin: 0; padding-top: 3px; white-space: nowrap; display: flex; align-items: baseline; gap: 7px; min-width: 0; overflow: hidden; }
+/* popis vedľa názvu; na úzkom displeji sa skráti on, nie názov */
+.brand h1 .tagline { font: 700 .8rem/1.2 var(--f-body); letter-spacing: 0; color: var(--muted); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@media (max-width: 380px) { .brand h1 { font-size: 1.15rem; gap: 5px; } .brand h1 .tagline { font-size: .72rem; } }
 .brand p { margin: 2px 0 0; font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .brand > div { min-width: 0; }
 .delta { font-weight: 700; }
@@ -405,7 +410,7 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
       <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2.5"/></svg>
     </a>
     <div>
-      <h1>Cyklostojany Bratislava</h1>
+      <h1>cinkcink <span class="tagline">cyklostojany v Bratislave</span></h1>
       <p id="dataInfo">Načítavam stojany…</p>
     </div>
   </div>
@@ -1253,7 +1258,7 @@ async function copyLink(url) {
   }
 }
 function bindShare(body, r) {
-  const url = rackLink(r), text = rackShareText(r), title = "Cyklostojany Bratislava";
+  const url = rackLink(r), text = rackShareText(r), title = "cinkcink – cyklostojany v Bratislave";
   const more = $("#shareMore", body), btn = $("#btnShare", body);
   const cb = $("#btnCopyLink", body);
   cb.onclick = async () => {
@@ -1396,7 +1401,7 @@ $("#rateForm").addEventListener("submit", async (e) => {
   try {
     await state.store.addRating(rating);
     await loadUserData(); render();
-    toast("Hodnotenie je uložené. Ďakujeme!");
+    toast("Cink! Hodnotenie je uložené. Ďakujeme.");
     openDetail(rateId);
   } catch (ex) {
     err.textContent = ex.code === "already" ? "Tento stojan si už hodnotil z tohto zariadenia." : "Hodnotenie sa nepodarilo uložiť. Skontroluj pripojenie a skús znova.";
@@ -1558,7 +1563,7 @@ $("#addForm").addEventListener("submit", async (e) => {
     const rack = await state.store.addRack(data, addPhotoBlob);
     await loadUserData(); render();
     $("#dlgAdd").close();
-    toast("Ďakujeme! Stojan čaká na schválenie správcom.");
+    toast("Cink! Ďakujeme, stojan čaká na schválenie správcom.");
     map.setView([rack.lat, rack.lon], 18);
   } catch (ex) {
     console.error(ex);
@@ -1631,7 +1636,7 @@ $("#demandForm").addEventListener("submit", async (e) => {
     const mine = myDemandPoints(); mine.push(demandPoint); prefs.set("myDemand", mine);
     await loadUserData(); render();
     $("#dlgDemand").close();
-    toast("Ďakujeme! Tvoj hlas je zapísaný.");
+    toast("Cink! Tvoj hlas je zapísaný. Ďakujeme.");
   } catch (ex) {
     console.error(ex);
     err.textContent = ex.code === "already" ? "Na tomto mieste si už hlasoval." : "Hlas sa nepodarilo uložiť. Skontroluj pripojenie a skús znova.";
@@ -1698,14 +1703,14 @@ function renderAdminBox() {
 const OSM_TYPE_TAG = { safe: "bicycle_parking=stands (stojan typu U/A)", shelter: "bicycle_parking=shed alebo lockers", informal: "bicycle_parking=informal", bad: "bicycle_parking=wall_loops (lámač kolies)" };
 function toReport() { return state.user.filter((r) => r.status === "approved" && r.osmConsent && !r.osmNoteId && !isNowInOsm(r)); }
 async function noteText(r) {
-  const lines = ["Nový stojan na bicykle, nahlásený cez aplikáciu Cyklostojany Bratislava a overený správcom.", ""];
+  const lines = ["Nový stojan na bicykle, nahlásený cez aplikáciu cinkcink (cinkcink.sk) a overený správcom.", ""];
   lines.push(`Typ: ${CATS[r.cat].label}` + (OSM_TYPE_TAG[r.cat] ? ` → ${OSM_TYPE_TAG[r.cat]}` : ""));
   if (r.capacity) lines.push(`Počet miest: ${r.capacity} → capacity=${r.capacity}`);
   if (r.covered != null) lines.push(`Zastrešený: ${r.covered ? "áno → covered=yes" : "nie → covered=no"}`);
   if (r.note) lines.push(`Poznámka navrhovateľa: ${r.note}`);
   const photo = await state.store.photoURL(r).catch(() => null);
   if (photo && /^https:/.test(photo)) lines.push(`Fotka: ${photo}`);
-  lines.push("", "#CyklostojanyBratislava");
+  lines.push("", "#cinkcink");
   return lines.join("\n");
 }
 async function createOsmNote(lat, lon, text) {
@@ -1810,7 +1815,7 @@ let installEvt = null;
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; updateInstallUI(); });
 window.addEventListener("appinstalled", () => {
   installEvt = null; prefs.set("installed", true); $("#installNote").hidden = true; updateInstallUI();
-  toast("Hotovo. Cyklostojany nájdeš na ploche telefónu.");
+  toast("Hotovo. Aplikáciu cinkcink nájdeš na ploche telefónu.");
 });
 // ponúkame len tam, kde sa to dá: Android/Chrome cez systémové okno, iPhone a ostatné cez návod
 function canInstall() { return !isStandalone() && !prefs.get("installed", false) && (!!installEvt || isIOS || isAndroid); }

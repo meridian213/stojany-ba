@@ -2,7 +2,7 @@
 // Nič neukladá do vyrovnávacej pamäte, aby sa vždy zobrazovala najnovšia verzia.
 // Bez internetu namiesto chyby prehliadača ukáže zrozumiteľnú správu.
 const OFFLINE = `<!doctype html><html lang="sk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cyklostojany Bratislava – bez internetu</title><style>
+<title>cinkcink – bez internetu</title><style>
 body{margin:0;min-height:100vh;display:grid;place-items:center;font:17px/1.5 system-ui,sans-serif;background:#eef2f7;color:#14213a;padding:24px;box-sizing:border-box;text-align:center}
 @media (prefers-color-scheme:dark){body{background:#0e1520;color:#e9eef7}}
 h1{font-size:1.4rem;margin:0 0 8px}p{margin:0 0 20px;max-width:28ch}

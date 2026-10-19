@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Cyklostojany Bratislava",
-  "short_name": "Cyklostojany",
+  "name": "cinkcink – cyklostojany v Bratislave",
+  "short_name": "cinkcink",
   "description": "Mapa cyklostojanov v Bratislave. Nájdi najbližší bezpečný stojan, ohodnoť ho alebo navrhni nový.",
   "lang": "sk",
   "dir": "ltr",

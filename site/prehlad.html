@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1d5bd8">
-<title>Cyklostojany Bratislava – prehľad pre mesto</title>
+<title>cinkcink – prehľad cyklostojanov pre mesto</title>
 <meta name="description" content="Koľko cyklostojanov má Bratislava a jej mestské časti, aké sú a kde ľudia hlásia, že chýbajú.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Cyklostojany Bratislava">
+<meta property="og:site_name" content="cinkcink">
 <meta property="og:title" content="Kde v Bratislave chýbajú cyklostojany">
 <meta property="og:description" content="Koľko cyklostojanov má Bratislava a jej mestské časti, aké sú a kde ľudia hlásia, že chýbajú.">
-<meta property="og:image" content="https://meridian213.github.io/stojany-ba/og.png">
+<meta property="og:image" content="https://cinkcink.sk/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="sk_SK">
@@ -81,7 +81,8 @@ header.top .wrap { display: flex; align-items: center; gap: 12px; flex-wrap: wra
 .brand { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-decoration: none; color: var(--fg); }
 .brand-mark { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
 .brand-mark svg { width: 22px; height: 22px; }
-.brand strong { font: 800 1.15rem/1.1 var(--f-display); padding-top: 3px; }
+.brand strong { font: 800 1.2rem/1.1 var(--f-display); padding-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand .tagline { font: 700 .8rem/1.2 var(--f-body); color: var(--muted); margin-left: 4px; }
 .btn {
   min-height: 44px; padding: 8px 16px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface); color: var(--fg);
   font: 700 .95rem/1.2 var(--f-body); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
@@ -181,7 +182,7 @@ footer { color: var(--muted); font-size: .85rem; padding-block: 0 32px; }
   <div class="wrap">
     <a class="brand" href="index.html">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="16" r="3.5"/><circle cx="18" cy="16" r="3.5"/><path d="M6 16l4-7h5l3 7M10 9l2 7h-6M14 6h2.5"/></svg></span>
-      <strong>Cyklostojany Bratislava</strong>
+      <strong>cinkcink <span class="tagline">cyklostojany v Bratislave</span></strong>
     </a>
     <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap">
       <a class="btn" href="index.html">Späť na mapu</a>
@@ -267,7 +268,7 @@ footer { color: var(--muted); font-size: .85rem; padding-block: 0 32px; }
     <section aria-labelledby="dlTitle">
       <div class="section-head">
         <h2 id="dlTitle">Dáta na stiahnutie</h2>
-        <p>Otvorené dáta pod licenciou ODbL. Pri použití uveď „© prispievatelia OpenStreetMap a používatelia aplikácie Cyklostojany Bratislava“. CSV sa otvorí v Exceli (oddeľovač bodkočiarka).</p>
+        <p>Otvorené dáta pod licenciou ODbL. Pri použití uveď „© prispievatelia OpenStreetMap a používatelia aplikácie cinkcink (cinkcink.sk)“. CSV sa otvorí v Exceli (oddeľovač bodkočiarka).</p>
       </div>
       <div class="downloads">
         <button class="btn" type="button" data-dl="racks-csv">Stojany (CSV)</button>
@@ -522,7 +523,7 @@ function save(name, text, type) {
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
 }
-const LICENSE = "© prispievatelia OpenStreetMap a používatelia aplikácie Cyklostojany Bratislava, ODbL";
+const LICENSE = "© prispievatelia OpenStreetMap a používatelia aplikácie cinkcink (cinkcink.sk), ODbL";
 function download(kind) {
   const day = (D.fetched || new Date().toISOString()).slice(0, 10);
   if (kind === "racks-csv") save(`cyklostojany-bratislava-${day}.csv`, csv([["zdroj", "id", "mestska_cast", "kategoria", "typ_osm", "kapacita", "zastreseny", "pristup", "nazov", "lat", "lon", "hodnotenie", "pocet_hodnoteni"],

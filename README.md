@@ -1,4 +1,6 @@
-# Cyklostojany Bratislava
+# cinkcink – cyklostojany v Bratislave
+
+Adresa: **https://cinkcink.sk** (predtým meridian213.github.io/stojany-ba, presmerúva sa).
 
 Mobilná mapa cyklostojanov v Bratislave. Stojany sa každú noc automaticky sťahujú z OpenStreetMap, používatelia ich môžu hodnotiť a navrhovať nové, ktoré schvaľuje správca.
 
@@ -32,6 +34,21 @@ Mobilná mapa cyklostojanov v Bratislave. Stojany sa každú noc automaticky sť
 
 Odteraz sa stránka aktualizuje sama: každú noc, a vždy keď v repozitári niečo zmeníš.
 
+## Vlastná doména (cinkcink.sk)
+
+Stránka beží na GitHub Pages s vlastnou doménou. Nastavenie (robí sa raz):
+
+1. **Overenie domény** (ochrana pred zneužitím): profil → *Settings → Pages → Add a domain* → `cinkcink.sk`, pridať TXT záznam, ktorý GitHub ukáže, a *Verify*.
+2. **Doména v repozitári**: *Settings → Pages → Custom domain* → `cinkcink.sk`. Súbor CNAME netreba, pri zverejňovaní cez GitHub Actions sa nepoužíva.
+3. **DNS u registrátora**:
+   - A `@` → 185.199.108.153, 185.199.109.153, 185.199.110.153, 185.199.111.153
+   - AAAA `@` → 2606:50c0:8000::153, 2606:50c0:8001::153, 2606:50c0:8002::153, 2606:50c0:8003::153
+   - CNAME `www` → meridian213.github.io
+4. Po prejavení DNS zapnúť **Enforce HTTPS**.
+5. V Supabase *Authentication → URL Configuration*: Site URL a Redirect URL `https://cinkcink.sk/`.
+
+Adresa je natvrdo zapísaná len v náhľade odkazov (`og:image`, `og:url` v `site/index.html` a `site/prehlad.html`). Všetko ostatné používa relatívne cesty.
+
 ## Napojenie Supabase (hodnotenia, návrhy, fotky)
 
 Bez tohto kroku stránka funguje, ale hodnotenia a návrhy sa ukladajú len v telefóne používateľa.
@@ -43,7 +60,7 @@ Bez tohto kroku stránka funguje, ale hodnotenia a návrhy sa ukladajú len v te
    insert into public.admins (email) values ('tvoj@email.sk');
    ```
 4. **Povoľ prihlásenie zo stránky**: *Authentication → URL Configuration*
-   - *Site URL*: `https://<tvoje-meno>.github.io/stojany-ba/`
+   - *Site URL*: `https://cinkcink.sk/` (alebo `https://<tvoje-meno>.github.io/stojany-ba/` bez vlastnej domény)
    - *Redirect URLs*: tá istá adresa
 5. **Prepoj stránku**: *Project Settings → API* skopíruj **Project URL** a verejný kľúč **Publishable key** (`sb_publishable_…`, v starších projektoch **anon public**). V GitHube otvor `site/config.js`, klikni na ceruzku (Edit) a vyplň:
    ```js
