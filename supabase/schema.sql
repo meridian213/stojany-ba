@@ -138,6 +138,18 @@ create policy demand_admin_delete on public.demand for delete to authenticated u
 revoke select on public.demand from anon, authenticated;
 grant select (id, lat, lon, reason, created_at) on public.demand to anon, authenticated;
 
+-- Prístupové práva pre Data API (supabase-js / PostgREST).
+-- Od 30. 10. 2026 Supabase novým tabuľkám v schéme public práva nedáva automaticky,
+-- preto sú tu vypísané výslovne. Dávame len to, čo aplikácia potrebuje; čo kto
+-- smie s konkrétnymi riadkami, ďalej obmedzujú pravidlá RLS vyššie.
+grant select on public.admins to authenticated;                         -- správca si overí sám seba
+grant select, insert on public.racks to anon, authenticated;           -- čítanie a návrh stojana
+grant update on public.racks to authenticated;                          -- schválenie (len správca, RLS)
+grant insert on public.ratings to anon, authenticated;                  -- hodnotenie (čítanie len vybraných stĺpcov, vyššie)
+grant insert on public.demand to anon, authenticated;                   -- hlas „Tu chýba stojan“
+grant delete on public.demand to authenticated;                         -- mazanie spamu (len správca, RLS)
+grant select, insert, update, delete on public.admins, public.racks, public.ratings, public.demand to service_role;
+
 -- Úložisko fotiek: verejné čítanie, nahrávať sa dá len JPEG do priečinka racks/, max 2 MB
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('photos', 'photos', true, 2097152, array['image/jpeg'])
