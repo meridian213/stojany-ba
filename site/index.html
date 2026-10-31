@@ -158,6 +158,14 @@ main { position: relative; min-height: 0; }
 .pin-bad svg { transform: rotate(-45deg); }
 .pin-unknown { background: var(--c-unknown); }
 .pin.is-pending { border: 2.5px dashed #fff; opacity: .8; }
+/* nový stojan (posledných 7 dní): žltá hviezdička v rohu značky aj zhluku */
+.new-badge {
+  position: absolute; top: -6px; right: -7px; z-index: 1; pointer-events: none;
+  width: 17px; height: 17px; border-radius: 50%; display: grid; place-items: center; box-sizing: border-box;
+  background: #ffc533; color: #14213a; border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.new-badge svg { width: 11px; height: 11px; }
+.cluster-wrap .new-badge { top: -3px; right: -3px; }
 .leaflet-marker-icon:focus-visible .pin { outline: 3px solid var(--fg); outline-offset: 3px; }
 .demand-wrap { background: none; border: none; }
 .demand-pin {
@@ -384,6 +392,10 @@ legend, .label { font-weight: 700; padding: 0; margin-bottom: 8px; }
 .legend .pin { width: 30px; height: 30px; border-width: 2px; grid-row: span 2; }
 .legend .pin svg { width: 17px; height: 17px; }
 .legend small { color: var(--muted); }
+.legend .legend-new { position: relative; grid-row: span 2; width: 30px; height: 30px; }
+.legend .legend-new .pin { grid-row: auto; }
+.notice.new { background: var(--warn-bg); color: var(--fg); display: flex; gap: 10px; align-items: center; }
+.notice.new .new-badge { position: static; flex: none; }
 .section-title { font: 800 1rem/1.2 var(--f-display); margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .admin-item { border: 1.5px solid var(--line); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; }
 .admin-item img { border-radius: 8px; max-height: 200px; object-fit: cover; }
@@ -963,7 +975,8 @@ const cluster = L.markerClusterGroup({
   showCoverageOnHover: false, disableClusteringAtZoom: 17, maxClusterRadius: 48, chunkedLoading: true, spiderfyOnMaxZoom: false,
   iconCreateFunction(c) {
     const n = c.getChildCount();
-    return L.divIcon({ className: "cluster-wrap", html: `<div class="cluster${n > 99 ? " lg" : ""}">${n}</div>`, iconSize: n > 99 ? [50, 50] : [42, 42] });
+    const hasNew = c.getAllChildMarkers().some((m) => m.options.isNew);
+    return L.divIcon({ className: "cluster-wrap", html: `<div class="cluster${n > 99 ? " lg" : ""}">${n}</div>${hasNew ? NEW_BADGE : ""}`, iconSize: n > 99 ? [50, 50] : [42, 42] });
   },
 });
 cluster.on("clusteranimationend", labelClusters);
@@ -971,8 +984,9 @@ map.on("zoomend moveend", labelClusters);
 function labelClusters() {
   // Zhluky sú ovládateľné klávesnicou; doplníme im zrozumiteľný názov pre čítačky obrazovky.
   document.querySelectorAll(".cluster-wrap").forEach((el) => {
-    const n = el.textContent.trim();
-    el.setAttribute("aria-label", `Skupina ${n} ${plural(+n, "stojanu", "stojanov", "stojanov")}. Priblížiť.`);
+    const n = el.querySelector(".cluster").textContent.trim();
+    const nw = el.querySelector(".new-badge") ? " Obsahuje nový stojan." : "";
+    el.setAttribute("aria-label", `Skupina ${n} ${plural(+n, "stojanu", "stojanov", "stojanov")}.${nw} Priblížiť.`);
     el.setAttribute("role", "button");
   });
 }
@@ -1136,6 +1150,14 @@ function rackTitle(r) {
 }
 
 /* ---------- zmena počtu za posledný týždeň ---------- */
+const NEW_DAYS = 7;
+const NEW_BADGE = '<span class="new-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg></span>';
+// Kedy stojan pribudol na mapu, ak je to za posledných NEW_DAYS dní (inak null).
+function newSince(r) {
+  const from = new Date(Date.now() - NEW_DAYS * 864e5);
+  if (r.source === "osm") return r.seen && r.seen >= from.toISOString().slice(0, 10) ? r.seen : null;
+  return r.status === "approved" && r.approvedAt && new Date(r.approvedAt) >= from ? r.approvedAt.slice(0, 10) : null;
+}
 function weeklyChange() {
   const from = new Date(Date.now() - 7 * 864e5);
   const fromDay = from.toISOString().slice(0, 10);
@@ -1169,8 +1191,9 @@ function render() {
   for (const r of racks) {
     seen.add(r.id);
     let m = state.markers.get(r.id);
-    const title = rackTitle(r);
-    const icon = L.divIcon({ className: "pin-wrap", html: pinHTML(r), iconSize: [34, 34], iconAnchor: [17, 17] });
+    const isNew = !!newSince(r);
+    const title = rackTitle(r) + (isNew ? ", nový stojan" : "");
+    const icon = L.divIcon({ className: "pin-wrap", html: pinHTML(r) + (isNew ? NEW_BADGE : ""), iconSize: [34, 34], iconAnchor: [17, 17] });
     if (!m) {
       m = L.marker([r.lat, r.lon], { icon, title, keyboard: true, riseOnHover: true });
       m.on("click", () => openDetail(m._rackId));
@@ -1181,6 +1204,7 @@ function render() {
       const el = m.getElement(); if (el) { el.setAttribute("aria-label", title); el.title = title; }
     }
     m._rackId = r.id;
+    m.options.isNew = isNew;
     markers.push(m);
   }
   for (const id of [...state.markers.keys()]) if (!seen.has(id)) state.markers.delete(id);
@@ -1307,6 +1331,8 @@ async function openDetail(id) {
   const coveredTxt = r.covered === true ? "Áno" : r.covered === false ? "Nie" : "Neuvedené";
 
   let h = "";
+  const since = newSince(r);
+  if (since) h += `<p class="notice new">${NEW_BADGE}<span><strong>Nový stojan.</strong> Na mape je od ${new Date(since).toLocaleDateString("sk-SK")}.</span></p>`;
   if (pending) h += `<p class="notice">Tento stojan ${r.mine ? "si navrhol ty a " : ""}čaká na schválenie správcom. Ostatní ho zatiaľ nevidia.</p>`;
   if (r.source === "user") h += `<img class="detail-photo" id="detailPhoto" alt="Fotka stojana od používateľa" hidden>`;
   h += `<dl class="kv">`;
@@ -1668,7 +1694,8 @@ function openDemandDetail(g) {
 
 /* ---------- info, legenda, správca ---------- */
 function buildLegend() {
-  $("#legend").innerHTML = CAT_ORDER.map((k) => `<li>${pinHTML({ cat: k, source: "osm" })}<strong>${esc(CATS[k].label)}</strong><small>${esc(CATS[k].desc)}</small></li>`).join("");
+  $("#legend").innerHTML = CAT_ORDER.map((k) => `<li>${pinHTML({ cat: k, source: "osm" })}<strong>${esc(CATS[k].label)}</strong><small>${esc(CATS[k].desc)}</small></li>`).join("")
+    + `<li><span class="legend-new" aria-hidden="true">${pinHTML({ cat: "safe", source: "osm" })}${NEW_BADGE}</span><strong>Nový stojan</strong><small>Pribudol na mapu za posledných ${NEW_DAYS} dní.</small></li>`;
 }
 function renderAdminBox() {
   const box = $("#adminBox"); const st = state.store;
