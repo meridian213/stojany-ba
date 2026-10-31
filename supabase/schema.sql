@@ -142,12 +142,15 @@ grant select (id, lat, lon, reason, created_at) on public.demand to anon, authen
 -- Od 30. 10. 2026 Supabase novým tabuľkám v schéme public práva nedáva automaticky,
 -- preto sú tu vypísané výslovne. Dávame len to, čo aplikácia potrebuje; čo kto
 -- smie s konkrétnymi riadkami, ďalej obmedzujú pravidlá RLS vyššie.
+revoke all on public.admins, public.racks, public.ratings, public.demand from anon, authenticated;
 grant select on public.admins to authenticated;                         -- správca si overí sám seba
 grant select, insert on public.racks to anon, authenticated;           -- čítanie a návrh stojana
 grant update on public.racks to authenticated;                          -- schválenie (len správca, RLS)
 grant insert on public.ratings to anon, authenticated;                  -- hodnotenie (čítanie len vybraných stĺpcov, vyššie)
 grant insert on public.demand to anon, authenticated;                   -- hlas „Tu chýba stojan“
 grant delete on public.demand to authenticated;                         -- mazanie spamu (len správca, RLS)
+grant select (rack_id, stars, frame, covered, lit, good_condition, created_at) on public.ratings to anon, authenticated;
+grant select (id, lat, lon, reason, created_at) on public.demand to anon, authenticated;
 grant select, insert, update, delete on public.admins, public.racks, public.ratings, public.demand to service_role;
 
 -- Úložisko fotiek: verejné čítanie, nahrávať sa dá len JPEG do priečinka racks/, max 2 MB
