@@ -1718,8 +1718,28 @@ function renderAdminBox() {
       </form>`;
     $("#loginForm").onsubmit = async (e) => {
       e.preventDefault();
-      try { await st.signIn($("#loginEmail").value.trim()); toast("Ak je e-mail správcu platný, prišiel ti odkaz na prihlásenie."); }
-      catch (ex) { console.error(ex); toast("Odkaz sa nepodarilo poslať. Skontroluj e-mail."); }
+      const form = e.currentTarget, btn = form.querySelector("button"), email = $("#loginEmail").value.trim();
+      if (btn.disabled) return;   // druhé ťuknutie počas odosielania by narazilo na limit e-mailov
+      btn.disabled = true; btn.textContent = "Posielam…";
+      try {
+        await st.signIn(email);
+        // namiesto formulára potvrdenie; nové odoslanie až po minúte (Supabase má prísny limit e-mailov)
+        form.innerHTML = `<p class="notice ok" role="status">Odkaz na prihlásenie sme poslali na <strong>${esc(email)}</strong>. Otvor ho v tomto prehliadači. Ak e-mail nevidíš, pozri aj spam.</p>
+          <button class="btn" type="button" id="loginAgain" disabled>Poslať znova (o 60 s)</button>`;
+        const again = $("#loginAgain"); let left = 60;
+        const t = setInterval(() => {
+          left--; again.textContent = left > 0 ? `Poslať znova (o ${left} s)` : "Poslať znova";
+          if (left <= 0) { clearInterval(t); again.disabled = false; again.onclick = () => renderAdminBox(); }
+        }, 1000);
+      } catch (ex) {
+        console.error(ex);
+        const code = ex && (ex.code || ""), status = ex && ex.status;
+        let msg = "Odkaz sa nepodarilo poslať. Skús to o chvíľu znova.";
+        if (status === 429 || /rate_limit/.test(code)) msg = "Odkaz na prihlásenie už odišiel pred chvíľou. Pozri si e-mail (aj spam). Nový sa dá poslať až o niekoľko minút.";
+        else if (/otp_disabled|signup|not_found/i.test(code + " " + (ex.message || ""))) msg = "Tento e-mail nie je zapísaný ako správca.";
+        toast(msg);
+        btn.disabled = false; btn.textContent = "Poslať odkaz na prihlásenie";
+      }
     };
   }
   const b = $("#btnAdminList"); if (b) b.onclick = openAdmin;
